@@ -78,26 +78,38 @@ public class TestMinRt {
     public static void main(String[] args) throws Exception {
 
         final String[] model = loadModelString();
+        final MinRt.Model parseModel = MinRt.parseModel(model);
+
         final Iterator<LabeledData> sampleDataSet = createDataIterator(LabeledDataPath, true);
         int correct = 0, wrong = 0;
         System.out.println("Start testing...");
-
+        final long startTime = System.currentTimeMillis();
         int count = 0;
-        while(sampleDataSet.hasNext()) {
+        while (sampleDataSet.hasNext()) {
             final LabeledData data = sampleDataSet.next();
             if (count == 0) dumpAsImage(data);
 
-            final int predictedLabel = MinRt.doAi(data.payload, model);
+//            final int predictedLabel = MinRt.doAi(data.payload, model);
+            final int predictedLabel = (int) MinRt.classification(data.payload, parseModel)[0];
+
             final int actualLabel = data.label;
             final boolean isCorrect = (predictedLabel == actualLabel);
-            if (isCorrect) correct++; else wrong++;
+            if (isCorrect) correct++;
+            else wrong++;
 
             count++;
-            System.out.printf("\rItem: %d, label: %d, predicted: %d, correct: %s      ", count, actualLabel, predictedLabel, isCorrect);
-            if (count >= 100) break;
+            if (count % 100 == 0) System.out.printf(
+                    "\rItem: %d, label: %d, predicted: %d, correct: %s      ",
+                    count, actualLabel, predictedLabel, isCorrect
+            );
+            if (count >= 10_000) break;
         }
+        final long timeDiff = System.currentTimeMillis() - startTime;
         System.out.println();
         System.out.printf("Test sample count: %d, Correct: %d Wrong: %d%n", count, correct, wrong);
-        System.out.printf("Correct Rate: %.2f%n", (double)correct / (double)count * 100);
+        System.out.printf("Correct Rate: %.2f%n", (double) correct / (double) count * 100);
+
+        System.out.printf("Time used: %f seconds.%n", timeDiff / 1000.0);
+        System.out.printf("Average: %f ms/i.%n", timeDiff / (double) count);
     }
 }
