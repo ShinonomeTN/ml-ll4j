@@ -29,16 +29,16 @@ public class TestMinRt {
 
     static class LabeledData {
         public final int label;
-        public final double[] data;
+        public final double[] payload;
 
-        LabeledData(int label, double[] data) {
+        LabeledData(int label, double[] payload) {
             this.label = label;
-            this.data = data;
+            this.payload = payload;
         }
     }
 
     static void dumpAsImage(LabeledData data) throws IOException {
-        final double[] imageData = data.data;
+        final double[] imageData = data.payload;
         final BufferedImage img = new BufferedImage(28, 28, BufferedImage.TYPE_BYTE_GRAY);
         for (int i = 0; i < 28 * 28; i++) {
             int x = i % 28;
@@ -49,9 +49,12 @@ public class TestMinRt {
         ImageIO.write(img, "png", new File("test.png"));
     }
 
-    static Iterator<LabeledData> createDataIterator(String dataSetPath) throws IOException {
+    static Iterator<LabeledData> createDataIterator(String dataSetPath, boolean skipHeader) throws IOException {
         final Scanner scanner = new Scanner(Files.newInputStream(Paths.get(dataSetPath)));
-        scanner.nextLine(); // Skip the csv header
+        if (skipHeader) {
+            final String header = scanner.nextLine().trim(); // Skip the csv header
+            System.out.println("Header: " + header);
+        }
 
         return new Iterator<LabeledData>() {
             @Override
@@ -63,7 +66,7 @@ public class TestMinRt {
             public LabeledData next() {
                 final String[] line = scanner.nextLine().split(",");
                 final double[] buffer = new double[line.length - 1];
-                for (int i = 1; i < line.length; i++) buffer[i] = Double.parseDouble(line[i]);
+                for (int i = 1; i < line.length; i++) buffer[i - 1] = Double.parseDouble(line[i]);
                 final int label = Integer.parseInt(line[0]);
                 return new LabeledData(label, buffer);
             }
@@ -75,55 +78,26 @@ public class TestMinRt {
     public static void main(String[] args) throws Exception {
 
         final String[] model = loadModelString();
-        final Iterator<LabeledData> sampleDataSet = createDataIterator(LabeledDataPath);
-
-        // Catten Linger:
-        // Here it loads a csv file.
-        // It seems like a csv containing correct answers
-        final Scanner sc = new Scanner(new File("fashion-mnist_test.csv"));
-        sc.nextLine(); // Skip header
-
+        final Iterator<LabeledData> sampleDataSet = createDataIterator(LabeledDataPath, true);
         int correct = 0, wrong = 0;
-        // Catten Linger:
-        // We can see here the program runs the test 100 times.
-        for (int c = 0; c < 100; c++) {
-            // Catten Linger:
-            // Each line is a csv, rows are splited with ','
-            String[] line = sc.nextLine().split(",");
+        System.out.println("Start testing...");
 
-            // Catten Linger:
-            // Here it created an array 1 entity smaller than the input
-            // It maybe means that the first field is a label
-            double[] input = new double[line.length - 1];
-            for (int i = 0; i < line.length - 1; i++) {
-                input[i] = Double.parseDouble(line[i + 1]);
-            }
+        int count = 0;
+        while(sampleDataSet.hasNext()) {
+            final LabeledData data = sampleDataSet.next();
+            if (count == 0) dumpAsImage(data);
 
-            // Catten Linger:
-            // Why this test?
-            // It means "dump the first image at the start"...
-            if (correct == 0 && wrong == 0) {
-                BufferedImage img = new BufferedImage(28, 28, BufferedImage.TYPE_BYTE_GRAY);
-                for (int i = 0; i < 28 * 28; i++) {
-                    int x = i % 28;
-                    int y = i / 28;
-                    int rgb = (int) (input[i] * 255);
-                    img.setRGB(x, y, rgb << 16 | rgb << 8 | rgb);
-                }
-                ImageIO.write(img, "png", new File("test.png"));
-            }
+            final int predictedLabel = MinRt.doAi(data.payload, model);
+            final int actualLabel = data.label;
+            final boolean isCorrect = (predictedLabel == actualLabel);
+            if (isCorrect) correct++; else wrong++;
 
-            int actualLabel = Integer.parseInt(line[0]);
-            // Catten Linger:
-            // Here we see, it put "script" and "input" into the "doAi" method.
-            // I can smell some weird bad joke...
-            int predictedLabel = MinRt.doAi(input, model);
-            if (actualLabel == predictedLabel) {
-                correct++;
-            } else {
-                wrong++;
-            }
+            count++;
+            System.out.printf("\rItem: %d, label: %d, predicted: %d, correct: %s      ", count, actualLabel, predictedLabel, isCorrect);
+            if (count >= 100) break;
         }
-        System.out.println("Correct: " + correct + " Wrong: " + wrong);
+        System.out.println();
+        System.out.printf("Test sample count: %d, Correct: %d Wrong: %d%n", count, correct, wrong);
+        System.out.printf("Correct Rate: %.2f%n", (double)correct / (double)count * 100);
     }
 }
