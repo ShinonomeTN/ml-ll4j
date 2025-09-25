@@ -1,6 +1,6 @@
-package huzpsb.ll4j.samples;
+package com.shinonometn.ml.ll4j.test;
 
-import huzpsb.ll4j.minrt.MinRt;
+import com.shinonometn.ml.ll4j.MinRt;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -13,7 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
 
-public class TestMinRt {
+public class MinRtTest {
 
     final static String ModelPath = "test.model";
 
@@ -77,7 +77,7 @@ public class TestMinRt {
 
     public static void main(String[] args) throws Exception {
 
-        final String[] model = loadModelString();
+        final MinRt.Model parseModel = MinRt.parseModel(loadModelString());
 
         final Iterator<LabeledData> sampleDataSet = createDataIterator(LabeledDataPath, true);
         int correct = 0, wrong = 0;
@@ -88,7 +88,7 @@ public class TestMinRt {
             final LabeledData data = sampleDataSet.next();
             if (count == 0) dumpAsImage(data);
 
-            final int predictedLabel = MinRt.doAi(data.payload, model);
+            final int predictedLabel = (int) MinRt.classification(data.payload, parseModel)[0];
 
             final int actualLabel = data.label;
             final boolean isCorrect = (predictedLabel == actualLabel);
