@@ -12,8 +12,11 @@ import java.util.Scanner;
 @SuppressWarnings("DataFlowIssue")
 public class TestMinRt {
     public static void main(String[] args) throws Exception {
-        List<String> strList = new ArrayList<>();
 
+        // Catten Linger:
+        // the scanner read all lines into array 'strList', It must be some
+        // record in each line.
+        List<String> strList = new ArrayList<>();
         Scanner sc = new Scanner(TestMinRt.class.getResourceAsStream("/test.model"));
         while (sc.hasNextLine()) {
             strList.add(sc.nextLine());
@@ -21,9 +24,14 @@ public class TestMinRt {
         String[] script = strList.toArray(new String[0]);
         sc.close();
 
+        // Catten Linger:
+        // Here it loads a csv file.
+        // It seems like a csv containing correct answers
         sc = new Scanner(new File("fashion-mnist_test.csv"));
         int correct = 0, wrong = 0;
         sc.nextLine(); // Skip header
+        // Catten Linger:
+        // We can see here the program runs the test 100 times.
         for (int c = 0; c < 100; c++) {
             String[] line = sc.nextLine().split(",");
             double[] input = new double[line.length - 1];
@@ -43,6 +51,9 @@ public class TestMinRt {
             }
 
             int actualLabel = Integer.parseInt(line[0]);
+            // Catten Linger:
+            // Here we see, it put "script" and "input" into the "doAi" method.
+            // I can smell some weird bad joke...
             int predictedLabel = MinRt.doAi(input, script);
             if (actualLabel == predictedLabel) {
                 correct++;
