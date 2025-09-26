@@ -6,9 +6,10 @@ import huzpsb.ll4j.layer.AbstractLayer;
 import huzpsb.ll4j.layer.JudgeLayer;
 
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 
 public class Model {
-    public AbstractLayer[] layers;
+    public final AbstractLayer[] layers;
 
     public Model(AbstractLayer... layers) {
         this.layers = layers;
@@ -75,7 +76,7 @@ public class Model {
             for (AbstractLayer layer : layers) {
                 layer.serialize(sb);
             }
-            PrintWriter pw = new PrintWriter(path, "UTF-8");
+            PrintWriter pw = new PrintWriter(path);
             pw.print(sb);
             pw.close();
         } catch (Exception ex) {

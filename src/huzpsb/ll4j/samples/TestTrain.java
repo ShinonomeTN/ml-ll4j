@@ -10,6 +10,7 @@ import huzpsb.ll4j.model.Model;
 public class TestTrain {
     public static void main(String[] args) {
         DataSet trainingSet = CsvLoader.load("fashion-mnist_train.csv", 0);
+
         Model model = new Model(
                 new DenseLayer(784, 100)
                 , new LeakyRelu(100)

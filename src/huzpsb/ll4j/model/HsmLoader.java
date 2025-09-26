@@ -7,13 +7,16 @@ import huzpsb.ll4j.layer.LeakyRelu;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 public class HsmLoader {
     public static Model load(String path) {
         try {
-            Scanner sc = new Scanner(new File(path), "UTF-8");
+            Scanner sc = new Scanner(Files.newInputStream(Paths.get(path)));
             ArrayList<AbstractLayer> layers = new ArrayList<>();
             while (sc.hasNextLine()) {
                 String line = sc.nextLine();

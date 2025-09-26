@@ -37,6 +37,8 @@ public abstract class AbstractLayer {
 
     public abstract void forward();
 
+    // backward is a function that takes the layer information
+    // and delta (error) as input, to adjust weight data.
     public abstract void backward();
 
     public abstract void update(double learningRate);
