@@ -54,11 +54,12 @@ public class ModelTrainer {
     }
 
     void setLabeledData(final DataSet.Entry dataEntry) {
-        final int inputSize = dataEntry.values.length;
-        final double[] input = getInput();
+        final double[] input = dataEntry.values;
+        final int inputSize = input.length;
+        final double[] modelInput = getInput();
         if (inputSize != getInput().length) throw new IllegalArgumentException(String.format(
                 "Input data size does not equal to the model input size: %d, expected: %d",
-                inputSize, input.length
+                inputSize, modelInput.length
         ));
 
         final int outputSize = dataEntry.getLabelLength();
@@ -69,7 +70,7 @@ public class ModelTrainer {
         ));
 
         // Set input
-        System.arraycopy(input, 0, input, 0, inputSize);
+        System.arraycopy(input, 0, modelInput, 0, inputSize);
 
         // Set the answer
         dataEntry.toValues(answer);
@@ -99,6 +100,11 @@ public class ModelTrainer {
 
     public int getIterationCount() {
         return correctCount + wrongCount;
+    }
+
+    public void resetCounters() {
+        correctCount = 0;
+        wrongCount = 0;
     }
 
     //================================================================
@@ -150,7 +156,7 @@ public class ModelTrainer {
             double[] getErrors() {
                 return trainer.errorCache.computeIfAbsent(
                         /*     key = */ tweaker,
-                        /* factory = */k -> new double[tweaker.layer.getInputSize()]
+                        /* factory = */k -> AdjustFunctions.fillWithZero(new double[tweaker.layer.getInputSize()])
                 );
             }
 
@@ -208,10 +214,12 @@ public class ModelTrainer {
         for (final LayerAdjust adjuster : adjusters) {
             final Step step = new Step.Adjust(this, adjuster);
             final Layer layer = adjuster.layer;
+            final double[] input = steps.getFirst().getOutput();
+            final double[] output = step.getOutput();
             layer.function.apply(
-                    /* Outputs of the latest layer  */ steps.getFirst().getOutput(),
+                    /* Outputs of the latest layer  */ input,
                     /* Weights of the current layer */ layer.data,
-                    /* Destination of the outputs   */ step.getOutput()
+                    /* Destination of the outputs   */ output
             );
             steps.push(step);
         }
@@ -232,33 +240,36 @@ public class ModelTrainer {
          * Backward propagation
          * ===
          * The backward propagation is just reverse the steps of the origin calculation
-         * (though some step needs a different algorithm). Use the benefit of stack, and
+         * (though some step needs a different algorithm). Use the benefit of stack, to
          * do calculation and update together.
          */
         double[] outputErrors = expectedResults;
-        for (Step i = steps.pop(); i instanceof Step.Adjust; i = steps.pop()) {
+        Step i = steps.pop();
+        while (!steps.isEmpty() && (i instanceof Step.Adjust)) {
             final Step.Adjust currentStep = (Step.Adjust) i;
             final Layer currentlayer = currentStep.tweaker.layer;
             final double[] inputErrors = currentStep.getErrors();
 
             final Step nextStep = steps.getFirst();
+            final double[] input = nextStep.getOutput();
 
             currentStep.tweaker.function.apply(
-                    /*     input = */ nextStep.getOutput(),
-                    /*   weights = */ currentlayer,
+                    /*     input = */ input,
+                    /*     layer = */ currentlayer,
                     /*    errors = */ outputErrors,
                     /*    output = */ inputErrors
             );
 
             currentStep.tweaker.updater.apply(
+                    /*        input = */ input,
                     /*        layer = */ currentlayer,
-                    /*        input = */ nextStep.getOutput(),
                     /*       errors = */ outputErrors,
                     /* learningRate = */ learningRate
             );
 
             // Current layer's input error is the previous layer's output error
             outputErrors = inputErrors;
+            i = steps.pop();
         }
     }
     //================================================================

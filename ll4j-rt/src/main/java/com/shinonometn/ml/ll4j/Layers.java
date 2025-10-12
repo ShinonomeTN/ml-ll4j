@@ -12,17 +12,25 @@ public final class Layers {
     }
 
     public static Layer dense(final int input, final int output, final double[] weights) {
+        return dense(input, output, weights, ForwardFunction.Dense);
+    }
+
+    public static Layer dense(final int input, final int output, final double[] weights, final ForwardFunction function) {
         if (weights.length != (input * output)) throw new IllegalArgumentException(String.format(
                 "Size of the weight array is not equals to the capacity. (%d * %d != %d)",
                 input, output, weights.length
         ));
-        return new Layer(TYPE_DENSE, new int[]{input, output}, weights, ForwardFunction.Dense);
+        return new Layer(TYPE_DENSE, new int[]{input, output}, weights, function);
+    }
+
+    public static Layer dense(final int input, final int output, final ForwardFunction function) {
+        return new Layer(TYPE_DENSE, new int[]{input, output}, new double[input * output], function);
     }
 
     final static String TYPE_JUDGE = "J";
 
     public static Layer judge(final int size) {
-        return new Layer(TYPE_JUDGE, new int[]{size, 1}, new double[0], ForwardFunction.MaxIndex);
+        return new Layer(TYPE_JUDGE, new int[]{size, 1}, new double[0], ForwardFunction.Judge);
     }
 
     final static String TYPE_LEAKY_RELU = "L";

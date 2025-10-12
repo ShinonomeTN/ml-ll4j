@@ -1,5 +1,6 @@
 package com.shinonometn.ml.ll4j.demo;
 
+import com.shinonometn.ml.ll4j.AdjustFunctions;
 import com.shinonometn.ml.ll4j.DataSet;
 import com.shinonometn.ml.ll4j.ModelTrainer;
 import com.shinonometn.utils.Formats;
@@ -21,13 +22,19 @@ public class TrainTest {
         System.out.printf("Training data file : %s\n", Paths.get(LabeledDataPath).toAbsolutePath());
         System.out.printf("Model output file  : %s\n", Paths.get(ModelPath).toAbsolutePath());
         final ExecutorService executor = Executors.newSingleThreadExecutor();
+        Thread.currentThread().setUncaughtExceptionHandler((t, e) -> {
+            executor.execute(() -> {
+                e.printStackTrace();
+                executor.shutdown();
+            });
+        });
 
         final ModelTrainer trainer = ModelTrainer.create(
-                fillWithGaussianRandom(dense(784, 100)),
+                fillWithGaussianRandom(dense(784, 100, AdjustFunctions.DenseAdjust)),
                 leakyRelu(100),
-                fillWithGaussianRandom(dense(100, 100)),
+                fillWithGaussianRandom(dense(100, 100, AdjustFunctions.DenseAdjust)),
                 leakyRelu(100),
-                fillWithGaussianRandom(dense(100, 10)),
+                fillWithGaussianRandom(dense(100, 10, AdjustFunctions.DenseAdjust)),
                 judge(10)
         );
 
@@ -39,7 +46,7 @@ public class TrainTest {
                     .createCSVIterator(LabeledDataPath, true);
 
             while(sampleDataSet.hasNext()) {
-                trainer.adjust(sampleDataSet.next());
+                trainer.adjust(sampleDataSet.next(), 8e-7);
                 final int c = trainer.getIterationCount();
                 if ((c % 1000) == 0) {
                     final int t = trainer.getCorrectCount();
@@ -66,6 +73,7 @@ public class TrainTest {
                     e.printStackTrace();
                 }
             });
+            trainer.resetCounters();
         }
         final long end = System.currentTimeMillis();
         System.out.printf("All round finished, time: %s%n", Formats.millisDuration(end - start));

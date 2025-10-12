@@ -44,7 +44,7 @@ public class LayerAdjust {
          * @param error        Errors that to be adjusts to
          * @param learningRate How aggressive the layer update should be
          */
-        void apply(final Layer layer, final double[] input, final double[] error, final double learningRate);
+        void apply(final double[] input, final Layer layer, final double[] error, final double learningRate);
     }
 
     //================================================================

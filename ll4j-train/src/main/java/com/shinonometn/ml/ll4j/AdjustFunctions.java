@@ -1,5 +1,7 @@
 package com.shinonometn.ml.ll4j;
 
+import java.util.Arrays;
+
 /**
  * Layer function is a function that accept layer weights, and processing iteration result
  */
@@ -7,16 +9,30 @@ public final class AdjustFunctions {
     private AdjustFunctions() {
     }
 
+    public static final ForwardFunction DenseAdjust = (input, trans, output) -> {
+        final int inputSize = input.length;
+        final int outputSize = output.length;
+
+        for (int idxO = 0; idxO < outputSize; idxO++) {
+            double sum = 0;
+            for (int idxI = 0; idxI < inputSize; idxI++) {
+                sum += input[idxI] * trans[idxO * idxI];
+            }
+            output[idxO] = sum;
+        }
+    };
+
     /** An empty update function. */
     static final LayerAdjust.Updater Noop = (input, layer, error, learningRate) -> {};
 
-    static final LayerAdjust.Updater DenseUpdate = (layer, inputs, errors, learningRate) -> {
+    static final LayerAdjust.Updater DenseUpdate = (inputs, layer, errors, learningRate) -> {
         final int inputSize = layer.getInputSize();
-        final double[] layerData = layer.data;
+        final int outputSize = layer.getOutputSize();
+        final double[] weights = layer.data;
+
         for (int i = 0; i < inputSize; i++) {
-            for (int j = 0; j < layer.getOutputSize(); j++) {
-                double delta = learningRate * errors[j] * inputs[i];
-                layerData[i * j] -= delta;
+            for (int j = 0; j < outputSize; j++) {
+                weights[i * j] -= learningRate * errors[j] * inputs[i];
             }
         }
     };
@@ -43,6 +59,11 @@ public final class AdjustFunctions {
             input[i] = random.nextGaussian(0, 1.0 / Math.sqrt(inputSize));
 
         return layer;
+    }
+
+    public static double[] fillWithZero(final double[] data) {
+        Arrays.fill(data, 0.0);
+        return data;
     }
 
     /**

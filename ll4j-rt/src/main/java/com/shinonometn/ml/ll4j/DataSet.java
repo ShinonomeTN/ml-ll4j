@@ -50,10 +50,7 @@ public final class DataSet {
         public static SampleIterator<LabelEntry> createCSVIterator(String path, boolean skipHeader) throws IOException {
             final Scanner scanner = new Scanner(Files.newInputStream(Paths.get(path)));
 
-            if (skipHeader) {
-                final String header = scanner.nextLine().trim(); // Skip the csv header
-//                System.out.println("Header: " + header);
-            }
+            if (skipHeader) scanner.nextLine(); // Skip the csv header
 
             return new SampleIterator<LabelEntry>() {
                 @Override
@@ -71,7 +68,7 @@ public final class DataSet {
                 }
 
                 @Override
-                public void close() throws IOException {
+                public void close() {
                     scanner.close();
                 }
             };

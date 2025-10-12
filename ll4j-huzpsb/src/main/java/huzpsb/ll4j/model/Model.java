@@ -88,29 +88,10 @@ public class Model {
                     layers[i - 1].output_error = layers[i].input_error;
             }
         }
-        System.out.printf("[%d] t: %d, f: %d, r: %02.2f%%%n", t + f, t, f, (t / (double) (t + f)) * 100);
-    }
-
-    public void testOn(DataSet dataSet) {
-        int t = 0, f = 0;
-        for (DataEntry dataEntry : dataSet.split) {
-            layers[0].input = dataEntry.values;
-            for (int i = 0; i < layers.length; i++) {
-                layers[i].forward();
-                if (i < layers.length - 1) {
-                    layers[i + 1].input = layers[i].output;
-                }
-            }
-            JudgeLayer judgeLayer = (JudgeLayer) layers[layers.length - 1];
-            int predict = judgeLayer.result;
-            int actual = dataEntry.type;
-            if (predict == actual) {
-                t++;
-            } else {
-                f++;
-            }
-        }
-        System.out.println("t: " + t + ", f: " + f);
+        System.out.printf(
+                "[%d] t: %d, f: %d, r: %02.2f%%%n",
+                t + f, t, f, (t / (double) (t + f)) * 100
+        );
     }
 
     public void save(String path) {
