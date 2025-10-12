@@ -15,6 +15,8 @@ import java.util.Scanner;
 
 public class FashionMnistClassify {
 
+    // THe origin model
+//    private final static String ModelPath = "../ll4j-huzpsb/src/main/resources/test.model";
     private final static String ModelPath = "test2.model";
     private final static String LabeledDataPath = "fashion-mnist_test.csv";
 
