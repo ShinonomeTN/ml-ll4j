@@ -10,12 +10,12 @@ public class JudgeLayer extends AbstractLayer {
     @Override
     public void forward() {
         for (int i = 0; i < input_size; i++) {
-            if (Double.isNaN(input[i])) {
-                throw new RuntimeException("input[" + i + "] is NaN! Plz reduce learning rate!");
-            }
-            if (input[i] > input[result]) {
-                result = i;
-            }
+            if (Double.isNaN(input[i])) throw new RuntimeException(
+                    "input[" + i + "] is NaN! Plz reduce learning rate!"
+            );
+            // Catten Linger:
+            // What does a JudgeLayer do is just take the index of the maximum input.
+            if (input[i] > input[result]) result = i;
         }
     }
 
