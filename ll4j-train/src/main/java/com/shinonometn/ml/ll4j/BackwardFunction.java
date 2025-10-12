@@ -30,12 +30,13 @@ public interface BackwardFunction {
         final double[] weights = layer.data;
         final int inputSize = layer.getInputSize();
         final int outputSize = layer.getOutputSize();
-        IntStream.range(0, inputSize).forEach(i -> {
+
+        IntStream.range(0, inputSize).forEach(idxI -> {
             double sum = 0;
-            for (int j = 0; j < outputSize; j++) {
-                sum += errors[j] * weights[i * j];
+            for (int idxO = 0; idxO < outputSize; idxO++) {
+                sum += errors[idxO] * weights[(idxI * outputSize) + idxO];
             }
-            output[i] = sum;
+            output[idxI] = sum;
         });
     };
 

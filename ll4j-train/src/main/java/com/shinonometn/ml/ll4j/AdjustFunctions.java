@@ -16,14 +16,14 @@ public final class AdjustFunctions {
     static final LayerAdjust.Updater Noop = (input, layer, error, learningRate) -> {
     };
 
-    static final LayerAdjust.Updater DenseUpdate = (inputs, layer, errors, learningRate) -> {
+    static final LayerAdjust.Updater DenseUpdate = (inputs, layer, errors, lr) -> {
         final int inputSize = layer.getInputSize();
         final int outputSize = layer.getOutputSize();
         final double[] weights = layer.data;
 
         IntStream.range(0, inputSize).parallel().forEach(idxI -> {
             for (int idxO = 0; idxO < outputSize; idxO++) {
-                weights[(idxI * outputSize) + idxO] -= learningRate * errors[idxO] * inputs[idxI];
+                weights[(idxI * outputSize) + idxO] -= lr * errors[idxO] * inputs[idxI];
             }
         });
     };
