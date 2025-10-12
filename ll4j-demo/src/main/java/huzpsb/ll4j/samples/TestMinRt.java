@@ -15,7 +15,8 @@ import java.util.Scanner;
 
 public class TestMinRt {
 
-    final static String ModelPath = "test.model";
+    private final static String ModelPath = "test3.model";
+    private final static String LabeledDataPath = "fashion-mnist_test.csv";
 
     static String[] loadModelString() throws IOException {
         List<String> buffer = new ArrayList<>();
@@ -27,17 +28,17 @@ public class TestMinRt {
         return buffer.toArray(new String[0]);
     }
 
-    static class LabeledData {
+    static class SampleData {
         public final int label;
         public final double[] payload;
 
-        LabeledData(int label, double[] payload) {
+        SampleData(int label, double[] payload) {
             this.label = label;
             this.payload = payload;
         }
     }
 
-    static void dumpAsImage(LabeledData data) throws IOException {
+    static void dumpAsImage(SampleData data) throws IOException {
         final double[] imageData = data.payload;
         final BufferedImage img = new BufferedImage(28, 28, BufferedImage.TYPE_BYTE_GRAY);
         for (int i = 0; i < 28 * 28; i++) {
@@ -49,43 +50,43 @@ public class TestMinRt {
         ImageIO.write(img, "png", new File("test.png"));
     }
 
-    static Iterator<LabeledData> createDataIterator(String dataSetPath, boolean skipHeader) throws IOException {
+    static Iterator<SampleData> createDataIterator(String dataSetPath, boolean skipHeader) throws IOException {
         final Scanner scanner = new Scanner(Files.newInputStream(Paths.get(dataSetPath)));
         if (skipHeader) {
             final String header = scanner.nextLine().trim(); // Skip the csv header
             System.out.println("Header: " + header);
         }
 
-        return new Iterator<LabeledData>() {
+        return new Iterator<SampleData>() {
             @Override
             public boolean hasNext() {
                 return scanner.hasNextLine();
             }
 
             @Override
-            public LabeledData next() {
+            public SampleData next() {
                 final String[] line = scanner.nextLine().split(",");
                 final double[] buffer = new double[line.length - 1];
                 for (int i = 1; i < line.length; i++) buffer[i - 1] = Double.parseDouble(line[i]);
                 final int label = Integer.parseInt(line[0]);
-                return new LabeledData(label, buffer);
+                return new SampleData(label, buffer);
             }
         };
     }
 
-    final static String LabeledDataPath = "fashion-mnist_test.csv";
-
     public static void main(String[] args) throws Exception {
+        System.out.printf("Model path: %s\n", Paths.get(ModelPath).toAbsolutePath());
+        System.out.printf("Labeled data path: %s\n", Paths.get(LabeledDataPath).toAbsolutePath());
 
         final String[] model = loadModelString();
 
-        final Iterator<LabeledData> sampleDataSet = createDataIterator(LabeledDataPath, true);
+        final Iterator<SampleData> sampleDataSet = createDataIterator(LabeledDataPath, true);
         int correct = 0, wrong = 0;
         System.out.println("Start testing...");
         final long startTime = System.currentTimeMillis();
         int count = 0;
         while (sampleDataSet.hasNext()) {
-            final LabeledData data = sampleDataSet.next();
+            final SampleData data = sampleDataSet.next();
             if (count == 0) dumpAsImage(data);
 
             final int predictedLabel = MinRt.doAi(data.payload, model);
@@ -100,7 +101,7 @@ public class TestMinRt {
                     "\rItem: %d, label: %d, predicted: %d, correct: %s      ",
                     count, actualLabel, predictedLabel, isCorrect
             );
-            if (count >= 10_000) break;
+            if (count >= 1_000) break;
         }
         final long timeDiff = System.currentTimeMillis() - startTime;
         System.out.println();

@@ -1,80 +1,322 @@
 package com.shinonometn.ml.ll4j;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Objects;
 
+import static com.shinonometn.ml.ll4j.Layers.*;
+
 public class ModelTrainer {
-    final LayerAdjust[] tweakers;
-    final double[] input;
+    final LayerAdjust[] adjusters;
     final Model model;
 
-    ModelTrainer(LayerAdjust[] tweakers, Model model) {
-        if (!Objects.equals(tweakers[tweakers.length - 1].layer.type, Layers.TYPE_JUDGE))
-            throw new IllegalArgumentException("Output layer is not JudgeLayer");
+    private final HashMap<Object, double[]> resultCache = new HashMap<>();
+    private final HashMap<Object, double[]> errorCache = new HashMap<>();
 
-        this.tweakers = tweakers;
-        this.model = model;
-        this.input = new double[model.getInputSize()];
+
+    private final Object InputKey;
+
+    /**
+     * get model input array cache, it's not null
+     */
+    private double[] getInput() {
+        return resultCache.get(InputKey);
     }
 
-    public void setInput(final double[] input) {
-        final int inputSize = input.length;
-        if (inputSize != this.input.length) throw new IllegalArgumentException("input size != input size");
-        System.arraycopy(input, 0, this.input, 0, inputSize);
+    private final Object AnswerKey;
+
+    /**
+     * get model output array cache, it's not null
+     */
+    private double[] getAnswer() {
+        return resultCache.get(AnswerKey);
+    }
+
+    ModelTrainer(LayerAdjust[] adjusters, Model model) {
+        if (!Objects.equals(adjusters[adjusters.length - 1].layer.type, Layers.TYPE_JUDGE))
+            throw new IllegalArgumentException("Output layer is not JudgeLayer");
+
+        this.adjusters = adjusters;
+        this.model = model;
+
+        // Create input
+        final double[] input = new double[model.getInputSize()];
+        this.InputKey = input;
+        resultCache.put(InputKey, input);
+
+        // Create output
+        final double[] output = new double[model.getOutputSize()];
+        this.AnswerKey = output;
+        resultCache.put(AnswerKey, output);
+    }
+
+    void setLabeledData(final DataSet.Entry dataEntry) {
+        final int inputSize = dataEntry.values.length;
+        final double[] input = getInput();
+        if (inputSize != getInput().length) throw new IllegalArgumentException(String.format(
+                "Input data size does not equal to the model input size: %d, expected: %d",
+                inputSize, input.length
+        ));
+
+        final int outputSize = dataEntry.getLabelLength();
+        final double[] answer = getAnswer();
+        if (outputSize != answer.length) throw new IllegalArgumentException(String.format(
+                "Label dimensions does not equals to the model output: %d, expected: %d",
+                outputSize, answer.length
+        ));
+
+        // Set input
+        System.arraycopy(input, 0, input, 0, inputSize);
+
+        // Set the answer
+        dataEntry.toValues(answer);
     }
 
     public Model toModel() {
-        final Layer[] layers = new Layer[tweakers.length];
+        final Layer[] layers = new Layer[adjusters.length];
         for (int i = 0; i < layers.length; i++) {
-            layers[i] = tweakers[i].layer;
+            layers[i] = adjusters[i].layer;
         }
         return new Model(layers);
     }
 
     //================================================================
 
-    public static class AdjustResult {
-        public final boolean correct;
+    private int correctCount = 0;
 
-        public AdjustResult(boolean correct) {
-            this.correct = correct;
+    public int getCorrectCount() {
+        return correctCount;
+    }
+
+    private int wrongCount = 0;
+
+    public int getWrongCount() {
+        return wrongCount;
+    }
+
+    public int getIterationCount() {
+        return correctCount + wrongCount;
+    }
+
+    //================================================================
+    abstract static class Step {
+
+        /**
+         * The reference to this step's result cache
+         */
+        abstract double[] getOutput();
+
+        protected ModelTrainer trainer;
+
+        /**
+         * A network tweaking step.
+         * <p>
+         * It's a handy reference to each element in network training.
+         */
+        protected Step(final ModelTrainer trainer) {
+            this.trainer = trainer;
+        }
+
+        /**
+         * The network input.
+         */
+        static final class Input extends Step {
+            Input(final ModelTrainer trainer) {
+                super(trainer);
+            }
+
+            @Override
+            double[] getOutput() {
+                return trainer.getInput();
+            }
+        }
+
+        /**
+         * Weight & bias adjustment steps.
+         */
+        static final class Adjust extends Step {
+            /**
+             * The corresponding tweaker of the result.
+             */
+            final LayerAdjust tweaker;
+
+            /**
+             * The reference to tweaker's error value cache.
+             * Related to the current layer, it's the input error.
+             */
+            double[] getErrors() {
+                return trainer.errorCache.computeIfAbsent(
+                        /*     key = */ tweaker,
+                        /* factory = */k -> new double[tweaker.layer.getInputSize()]
+                );
+            }
+
+            @Override
+            double[] getOutput() {
+                return trainer.resultCache.computeIfAbsent(
+                        /*     key = */ tweaker,
+                        /* factory = */ k -> new double[tweaker.layer.getOutputSize()]
+                );
+            }
+
+
+            Adjust(final ModelTrainer trainer, final LayerAdjust tweaker) {
+                super(trainer);
+                this.tweaker = tweaker;
+            }
         }
     }
 
-    void adjust(final DataSet.LabeledEntry entry, final double[] learningRate) {
-        final double[] input = entry.values;
-        final int inputSize = input.length;
-        if (inputSize != this.input.length) throw new IllegalArgumentException(
-                "Data size not equals to the model input"
-        );
-        // Set input
-        final LinkedList<Iteration> results = new LinkedList<>();
-        results.push(new Iteration(input));
+    public void adjust(final DataSet.LabelEntry entry) {
+        adjust(entry, DefaultLearningRate);
+    }
 
-        for (final LayerAdjust tweaker : tweakers) {
-            final Iteration current = new Iteration(tweaker.outputState);
-            final Layer layer = tweaker.layer;
-            layer.function.forward(results.getLast().result, layer.data, current.result);
-            results.add(current);
+    /**
+     * Run a single adjust iteration, with a learning rate.
+     *
+     * @param entry        A data entry, with the sample data and a correct label
+     * @param learningRate learning rate of this network
+     */
+    public void adjust(final DataSet.LabelEntry entry, double learningRate) {
+        // Check the learning rate
+        if (Double.isNaN(learningRate) || learningRate <= 0.0) {
+            learningRate = DefaultLearningRate;
         }
 
-        final int actualLabel = entry.label;
-        final int predictedLabel = Matrix.maxIndex(results.getLast().result);
-        final boolean isCorrect = (actualLabel == predictedLabel);
+        // Set data
+        setLabeledData(entry);
 
-        final LinkedList<Iteration> errors = new LinkedList<>();
-        for (int i = tweakers.length - 1; i >= 0; i--) {
-            final Iteration current = results.pop();
-            final LayerAdjust tweaker = tweakers[i];
-            final Layer layer = tweaker.layer;
-            errors.add(new Iteration(new double[layer.getInputSize()]));
-            layer.function.backward(current.result, layer.data, errors.getLast().result);
+        // Set input
+        // The first layer is always an input layer
+        final LinkedList<Step> steps = new LinkedList<>();
+        steps.push(new Step.Input(this));
+
+        /*
+         * Forward propagation
+         * ===
+         * Each `tweaker` holds a layer. Layers are holding weights and the forward propagation function.
+         *
+         * Each result the layer produces are stored in the `results` list for convenience, since each
+         * layer's output is the input for next layer.
+         *
+         * And the latest layer's output is the final result. We need those indeterminate results for the
+         * network updating.
+         */
+        for (final LayerAdjust adjuster : adjusters) {
+            final Step step = new Step.Adjust(this, adjuster);
+            final Layer layer = adjuster.layer;
+            layer.function.apply(
+                    /* Outputs of the latest layer  */ steps.getFirst().getOutput(),
+                    /* Weights of the current layer */ layer.data,
+                    /* Destination of the outputs   */ step.getOutput()
+            );
+            steps.push(step);
+        }
+
+        // log the correct count
+        final Step output = steps.getFirst();
+        final double[] outputResults = output.getOutput();
+        final double[] expectedResults = getAnswer();
+        final boolean isCorrect = Arrays.equals(expectedResults, outputResults);
+        if (isCorrect) correctCount++;
+        else wrongCount++;
+
+        // Set the correct answer to the network
+        // In back propagation, the answer becomes the input
+        System.arraycopy(expectedResults, 0, outputResults, 0, outputResults.length);
+
+        /*
+         * Backward propagation
+         * ===
+         * The backward propagation is just reverse the steps of the origin calculation
+         * (though some step needs a different algorithm). Use the benefit of stack, and
+         * do calculation and update together.
+         */
+        double[] outputErrors = expectedResults;
+        for (Step i = steps.pop(); i instanceof Step.Adjust; i = steps.pop()) {
+            final Step.Adjust currentStep = (Step.Adjust) i;
+            final Layer currentlayer = currentStep.tweaker.layer;
+            final double[] inputErrors = currentStep.getErrors();
+
+            final Step nextStep = steps.getFirst();
+
+            currentStep.tweaker.function.apply(
+                    /*     input = */ nextStep.getOutput(),
+                    /*   weights = */ currentlayer,
+                    /*    errors = */ outputErrors,
+                    /*    output = */ inputErrors
+            );
+
+            currentStep.tweaker.updater.apply(
+                    /*        layer = */ currentlayer,
+                    /*        input = */ nextStep.getOutput(),
+                    /*       errors = */ outputErrors,
+                    /* learningRate = */ learningRate
+            );
+
+            // Current layer's input error is the previous layer's output error
+            outputErrors = inputErrors;
+        }
+    }
+    //================================================================
+
+    /** Save the model to file */
+    public void writeModelToFile(String path) throws IOException {
+        try(final PrintWriter writer = new PrintWriter(path)) {
+            for (final LayerAdjust adjuster : adjusters) {
+                final Layer layer = adjuster.layer;
+                switch (layer.type) {
+                    case TYPE_DENSE: {
+                        writer.printf("D %d %d ", layer.getInputSize(), layer.getOutputSize());
+                        for (int i = 0; i < layer.getInputSize(); i++) {
+                            for (int k = 0; k < layer.getOutputSize(); k++) {
+                                writer.print(layer.data[i * k]);
+                                writer.print(" ");
+                            }
+                        }
+                        break;
+                    }
+
+                    case TYPE_LEAKY_RELU: {
+                        writer.printf("L %d%n", layer.getInputSize());
+                        break;
+                    }
+
+                    case TYPE_JUDGE: {
+                        writer.printf("J %d%n", layer.getInputSize());
+                        break;
+                    }
+                }
+                writer.println();
+                writer.flush();
+            }
         }
     }
 
     //================================================================
 
-    static LayerAdjust[] adjusterForLayers(Layer[] layers) {
+    /**
+     * Create a ModelTrainer from a set of layers
+     */
+    public static ModelTrainer create(Layer... layers) {
+        final Model model = new Model(layers);
+        final LayerAdjust[] adjusters = createAdjustersForLayers(layers);
+        return new ModelTrainer(adjusters, model);
+    }
+
+    /**
+     * Create a ModelTrainer on a Model
+     */
+    public static ModelTrainer on(final Model model) {
+        final LayerAdjust[] adjusts = createAdjustersForLayers(model.layers);
+        return new ModelTrainer(adjusts, model);
+    }
+
+    // Helper to create adjuster for each layers
+    static LayerAdjust[] createAdjustersForLayers(Layer[] layers) {
         final LayerAdjust[] adjusts = new LayerAdjust[layers.length];
         for (int i = 0; i < adjusts.length; i++) {
             adjusts[i] = LayerAdjust.createAdjuster(layers[i]);
@@ -82,14 +324,11 @@ public class ModelTrainer {
         return adjusts;
     }
 
-    public static ModelTrainer create(Layer... layers) {
-        final Model model = new Model(layers);
-        final LayerAdjust[] adjusts = adjusterForLayers(layers);
-        return new ModelTrainer(adjusts, model);
-    }
-
-    public static ModelTrainer fromModel(final Model model) {
-        final LayerAdjust[] adjusts = adjusterForLayers(model.layers);
-        return new ModelTrainer(adjusts, model);
-    }
+    //================================================================
+    /**
+     * The default learning rate.
+     * <p>
+     * Why `8e-7`(0.0000008)? I have no idea. This value is from the origin LL4J codes.
+     */
+    public static final double DefaultLearningRate = 8e-7;
 }

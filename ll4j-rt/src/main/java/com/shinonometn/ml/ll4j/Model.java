@@ -12,17 +12,25 @@ public class Model {
         this.layers = layers;
     }
 
-    /** Get model input size */
+    /**
+     * Get model input size
+     */
     public int getInputSize() {
         return layers[0].getInputSize();
     }
 
-    /** Get model output size */
-    public int getOutputSize() { return layers[layers.length - 1].getOutputSize(); }
+    /**
+     * Get model output size
+     */
+    public int getOutputSize() {
+        return layers[layers.length - 1].getOutputSize();
+    }
 
     //================================================================
 
-    /** Parse model from a list of string representing layer weights */
+    /**
+     * Parse model from a list of string representing layer weights
+     */
     public static Model parseLayers(final String[] model) throws MinRtException {
         final LinkedList<Layer> layers = new LinkedList<>();
 
@@ -31,7 +39,7 @@ public class Model {
             // layer data is type + size(vararg) + data(vararg)
             if (s.length() < 2) continue;
 
-            final String[] tokens = s.split(" ");
+            final String[] tokens = s.trim().split(" ");
 
             int pos = 0; // Position of reader
 
@@ -86,19 +94,21 @@ public class Model {
         return new Model(layers.toArray(new Layer[0]));
     }
 
-    /** Do classification with a parsed model */
+    /**
+     * Do classification with a parsed model
+     */
     public double[] classification(double[] input) throws MinRtException {
         final int inputSize = getInputSize();
         if (input.length != inputSize) throw new MinRtException(String.format(
-                "Wrong input size, expected %d, got %d", inputSize, input.length
+                "Wrong input size for this model, expected %d, got %d", inputSize, input.length
         ));
 
-        Iteration iter = new Iteration(input);
+        double[] ref = input;
         for (Layer layer : layers) {
-            final Iteration next = new Iteration(new double[layer.getOutputSize()]);
-            layer.function.forward(iter.result, layer.data, next.result);
-            iter = next;
+            final double[] next = new double[layer.getOutputSize()];
+            layer.function.apply(ref, layer.data, next);
+            ref = next;
         }
-        return iter.result;
+        return ref;
     }
 }

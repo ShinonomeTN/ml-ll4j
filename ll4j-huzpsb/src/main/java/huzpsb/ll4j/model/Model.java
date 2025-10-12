@@ -88,7 +88,7 @@ public class Model {
                     layers[i - 1].output_error = layers[i].input_error;
             }
         }
-        System.out.println("t: " + t + ", f: " + f);
+        System.out.printf("[%d] t: %d, f: %d, r: %02.2f%%%n", t + f, t, f, (t / (double) (t + f)) * 100);
     }
 
     public void testOn(DataSet dataSet) {

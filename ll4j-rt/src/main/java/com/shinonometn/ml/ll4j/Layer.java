@@ -7,9 +7,9 @@ public class Layer {
     public final String type;
     final int[] meta;
     final double[] data;
-    final Matrix.Transform function;
+    final ForwardFunction function;
 
-    Layer(final String type, final int[] meta, final double[] data, final Matrix.Transform function) {
+    Layer(final String type, final int[] meta, final double[] data, final ForwardFunction function) {
         this.type = type;
         this.data = data;
         this.meta = meta;
