@@ -23,7 +23,8 @@ public final class AdjustFunctions {
 
         IntStream.range(0, inputSize).parallel().forEach(idxI -> {
             for (int idxO = 0; idxO < outputSize; idxO++) {
-                weights[(idxI * outputSize) + idxO] -= lr * errors[idxO] * inputs[idxI];
+                final double delta = lr * errors[idxO] * inputs[idxI];
+                weights[(idxI * outputSize) + idxO] -= delta;
             }
         });
     };

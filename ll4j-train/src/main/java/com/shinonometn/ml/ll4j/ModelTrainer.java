@@ -287,9 +287,11 @@ public class ModelTrainer {
                 switch (layer.type) {
                     case TYPE_DENSE: {
                         writer.printf("D %d %d ", layer.getInputSize(), layer.getOutputSize());
-                        for (int i = 0; i < layer.getInputSize(); i++) {
-                            for (int k = 0; k < layer.getOutputSize(); k++) {
-                                writer.print(layer.data[i * k]);
+                        final int inputSize = layer.getInputSize();
+                        final int outputSize = layer.getOutputSize();
+                        for (int i = 0; i < inputSize; i++) {
+                            for (int k = 0; k < outputSize; k++) {
+                                writer.print(layer.data[i * outputSize + k]);
                                 writer.print(" ");
                             }
                         }

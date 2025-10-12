@@ -32,11 +32,11 @@ public interface BackwardFunction {
         final int outputSize = layer.getOutputSize();
 
         IntStream.range(0, inputSize).forEach(idxI -> {
-            double sum = 0;
+            double err = 0;
             for (int idxO = 0; idxO < outputSize; idxO++) {
-                sum += errors[idxO] * weights[(idxI * outputSize) + idxO];
+                err += errors[idxO] * weights[(idxO * inputSize) + idxI];
             }
-            output[idxI] = sum;
+            output[idxI] = err;
         });
     };
 

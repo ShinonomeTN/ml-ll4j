@@ -53,7 +53,7 @@ public class FashionMnistTrain {
         final long start = System.currentTimeMillis();
         for (int i = 0; i < 128; i++) {
             final long roundStart = System.currentTimeMillis();
-            System.out.printf("Training round %03d ========\n", i + 1);
+            System.out.printf("Training round % 3d/128 ========\n", i + 1);
 
             try(final SampleIterator<LabelEntry> sampleDataSet =
                         LabelEntry.createCSVIterator(LabeledDataPath, true)) {
@@ -85,6 +85,7 @@ public class FashionMnistTrain {
                 );
                 try {
                     trainer.writeModelToFile(ModelLocation);
+                    System.out.println("Round saved.");
                 } catch (IOException e) {
                     e.printStackTrace(System.err);
                 }
