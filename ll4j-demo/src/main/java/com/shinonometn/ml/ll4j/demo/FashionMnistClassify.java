@@ -38,8 +38,8 @@ public class FashionMnistClassify {
     }
 
     public static void main(String[] args) throws Exception {
-        System.out.printf("Model path: %s\n", Paths.get(ModelPath).toAbsolutePath());
-        System.out.printf("Labeled data path: %s\n", Paths.get(LabeledDataPath).toAbsolutePath());
+        System.out.printf("Model path : %s\n", Paths.get(ModelPath).toAbsolutePath());
+        System.out.printf("Label path : %s\n", Paths.get(LabeledDataPath).toAbsolutePath());
 
         final Model model = Model.parseLayers(loadModelString());
 

@@ -83,6 +83,7 @@ public final class AdjustFunctions {
                 array[i * j] = random.nextGaussian(1 - rv, 1 + rv);
             }
         }
+
         return array;
     }
 }

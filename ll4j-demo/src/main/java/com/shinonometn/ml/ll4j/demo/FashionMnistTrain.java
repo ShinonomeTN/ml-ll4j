@@ -1,6 +1,8 @@
 package com.shinonometn.ml.ll4j.demo;
 
 import com.shinonometn.ml.ll4j.DataSet;
+import com.shinonometn.ml.ll4j.DataSet.LabelEntry;
+import com.shinonometn.ml.ll4j.DataSet.SampleIterator;
 import com.shinonometn.ml.ll4j.ModelTrainer;
 import com.shinonometn.utils.Formats;
 
@@ -42,23 +44,21 @@ public class FashionMnistTrain {
             final long roundStart = System.currentTimeMillis();
             System.out.printf("Training round %03d ========\n", i + 1);
 
-            try(final DataSet.SampleIterator<DataSet.LabelEntry> sampleDataSet = DataSet.LabelEntry
-                    .createCSVIterator(LabeledDataPath, true)) {
+            try(final SampleIterator<LabelEntry> sampleDataSet =
+                        LabelEntry.createCSVIterator(LabeledDataPath, true)) {
 
                 while(sampleDataSet.hasNext()) {
                     trainer.adjust(sampleDataSet.next(), 8e-7);
 
                     final int c = trainer.getIterationCount();
-                    if ((c % 1000) == 0) {
-                        final int t = trainer.getCorrectCount();
-                        final int f = trainer.getWrongCount();
+                    if ((c % 1000) != 0) continue;
 
-                        executor.execute(() -> System.out.printf(
-                                "[% 6d] t: % 4d, f: %4d, r: %.2f%%\r",
-                                c, t, f, ((t / (double) c) * 100)
-                        ));
-
-                    }
+                    final int t = trainer.getCorrectCount();
+                    final int f = trainer.getWrongCount();
+                    executor.execute(() -> System.out.printf(
+                            "\r[% 6d] t:% 6d, f:% 6d, r:%2.2f%%",
+                            c, t, f, ((t / (double) c) * 100)
+                    ));
                 }
             }
 
@@ -69,7 +69,7 @@ public class FashionMnistTrain {
 
             executor.execute(() -> {
                 System.out.printf(
-                        "Round %03d finished, time: %s ========%n",
+                        "Round %03d finished, time: %s%n",
                         round + 1, Formats.millisDuration(roundEnd - roundStart)
                 );
                 try {

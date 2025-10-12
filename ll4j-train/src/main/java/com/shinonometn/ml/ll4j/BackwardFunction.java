@@ -1,5 +1,7 @@
 package com.shinonometn.ml.ll4j;
 
+import java.util.stream.IntStream;
+
 public interface BackwardFunction {
 
     /**
@@ -28,13 +30,13 @@ public interface BackwardFunction {
         final double[] weights = layer.data;
         final int inputSize = layer.getInputSize();
         final int outputSize = layer.getOutputSize();
-        for (int i = 0; i < inputSize; i++) {
+        IntStream.range(0, inputSize).forEach(i -> {
             double sum = 0;
             for (int j = 0; j < outputSize; j++) {
                 sum += errors[j] * weights[i * j];
             }
             output[i] = sum;
-        }
+        });
     };
 
     BackwardFunction LeakyRelu = (input, layer, errors, output) -> {
