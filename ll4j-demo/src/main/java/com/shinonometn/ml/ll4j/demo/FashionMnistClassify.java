@@ -2,6 +2,7 @@ package com.shinonometn.ml.ll4j.demo;
 
 import com.shinonometn.ml.ll4j.DataSet;
 import com.shinonometn.ml.ll4j.Model;
+import com.shinonometn.utils.Loaders;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -20,14 +21,6 @@ public class FashionMnistClassify {
     private final static String ModelPath = "test2.model";
     private final static String LabeledDataPath = "fashion-mnist_test.csv";
 
-    static String[] loadModelString() throws IOException {
-        final List<String> buffer = new ArrayList<>();
-        try (final Scanner scanner = new Scanner(Files.newInputStream(Paths.get(ModelPath)))) {
-            while (scanner.hasNextLine()) buffer.add(scanner.nextLine());
-        }
-        return buffer.toArray(new String[0]);
-    }
-
     static void dumpAsImage(double[] sampleData) throws IOException {
         final BufferedImage img = new BufferedImage(28, 28, BufferedImage.TYPE_BYTE_GRAY);
         for (int i = 0; i < 28 * 28; i++) {
@@ -43,7 +36,7 @@ public class FashionMnistClassify {
         System.out.printf("Model path : %s\n", Paths.get(ModelPath).toAbsolutePath());
         System.out.printf("Label path : %s\n", Paths.get(LabeledDataPath).toAbsolutePath());
 
-        final Model model = Model.parseLayers(loadModelString());
+        final Model model = Model.parseLayers(Loaders.loadModelString(ModelPath));
 
         final DataSet.SampleIterator<DataSet.LabelEntry> sampleDataSet = DataSet
                 .LabelEntry.createCSVIterator(LabeledDataPath, true);

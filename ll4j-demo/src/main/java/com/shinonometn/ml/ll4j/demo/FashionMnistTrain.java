@@ -1,12 +1,15 @@
 package com.shinonometn.ml.ll4j.demo;
 
-import com.shinonometn.ml.ll4j.DataSet;
 import com.shinonometn.ml.ll4j.DataSet.LabelEntry;
 import com.shinonometn.ml.ll4j.DataSet.SampleIterator;
+import com.shinonometn.ml.ll4j.MinRtException;
+import com.shinonometn.ml.ll4j.Model;
 import com.shinonometn.ml.ll4j.ModelTrainer;
 import com.shinonometn.utils.Formats;
+import com.shinonometn.utils.Loaders;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,7 +19,7 @@ import static com.shinonometn.ml.ll4j.Layers.*;
 
 public class FashionMnistTrain {
     private final static String LabeledDataPath = "fashion-mnist_train.csv";
-    private final static String ModelPath = "./test2.model";
+    private final static String ModelLocation = "./test2.model";
 
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static final Thread.UncaughtExceptionHandler uceHandler = (t, e) -> executor.execute(() -> {
@@ -24,20 +27,28 @@ public class FashionMnistTrain {
         executor.shutdown();
     });
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, MinRtException {
         Thread.currentThread().setUncaughtExceptionHandler(uceHandler);
+        final Path ModelPath = Paths.get(ModelLocation);
 
         System.out.printf("Training data file : %s\n", Paths.get(LabeledDataPath).toAbsolutePath());
-        System.out.printf("Model output file  : %s\n", Paths.get(ModelPath).toAbsolutePath());
+        System.out.printf("Model output file  : %s\n", ModelPath.toAbsolutePath());
 
-        final ModelTrainer trainer = ModelTrainer.create(
-                fillWithGaussianRandom(dense(784, 100)),
-                leakyRelu(100),
-                fillWithGaussianRandom(dense(100, 100)),
-                leakyRelu(100),
-                fillWithGaussianRandom(dense(100, 10)),
-                judge(10)
-        );
+        final ModelTrainer trainer;
+        if (ModelPath.toFile().exists()) {
+            trainer = ModelTrainer.on(Model.parseLayers(Loaders.loadModelString(ModelLocation)));
+            System.out.println("Load origin weights from file.");
+        } else {
+            trainer = ModelTrainer.create(
+                    fillWithGaussianRandom(dense(784, 100)),
+                    leakyRelu(100),
+                    fillWithGaussianRandom(dense(100, 100)),
+                    leakyRelu(100),
+                    fillWithGaussianRandom(dense(100, 10)),
+                    judge(10)
+            );
+            System.out.println("New model weights created.");
+        }
 
         final long start = System.currentTimeMillis();
         for (int i = 0; i < 128; i++) {
@@ -73,7 +84,7 @@ public class FashionMnistTrain {
                         round + 1, Formats.millisDuration(roundEnd - roundStart)
                 );
                 try {
-                    trainer.writeModelToFile(ModelPath);
+                    trainer.writeModelToFile(ModelLocation);
                 } catch (IOException e) {
                     e.printStackTrace(System.err);
                 }
