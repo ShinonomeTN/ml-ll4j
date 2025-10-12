@@ -1,21 +1,25 @@
 package com.shinonometn.ml.ll4j;
 
+import java.util.stream.IntStream;
+
 public interface ForwardFunction {
-    void apply(final double[] input, final double[] transform, final double[] output);
+    void apply(final double[] input, final double[] weights, final double[] output);
 
     //================================================================
 
-    ForwardFunction Dense = (input, trans, output) -> {
+    ForwardFunction Dense = (input, weights, output) -> {
         final int inputSize = input.length;
         final int outputSize = output.length;
 
-        for (int idxO = 0; idxO < outputSize; idxO++) {
+        // For each output position, get the weights for each input,
+        // multiples it and set the result.
+        IntStream.range(0, outputSize).parallel().forEach(idxO -> {
             double sum = 0;
             for (int idxI = 0; idxI < inputSize; idxI++) {
-                sum += input[idxI] * trans[idxO + idxI * outputSize];
+                sum += input[idxI] * weights[(idxI * outputSize) + idxO];
             }
             output[idxO] = sum;
-        }
+        });
     };
 
     //================================================================
@@ -26,7 +30,9 @@ public interface ForwardFunction {
         final int inputSize = input.length;
 
         for (int i = 0; i < inputSize; i++) {
-            output[i] = input[i] > 0 ? input[i] : input[i] * 0.01;
+            final double v = input[i];
+            // I added a check for the "eq 0" scenario
+            output[i] = v > 0 ? v : (v < 0 ? input[i] * 0.01 : Double.MIN_NORMAL);
         }
     };
 

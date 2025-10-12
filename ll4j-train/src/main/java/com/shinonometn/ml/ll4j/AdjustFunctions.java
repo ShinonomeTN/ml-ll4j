@@ -1,6 +1,7 @@
 package com.shinonometn.ml.ll4j;
 
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 /**
  * Layer function is a function that accept layer weights, and processing iteration result
@@ -9,32 +10,22 @@ public final class AdjustFunctions {
     private AdjustFunctions() {
     }
 
-    public static final ForwardFunction DenseAdjust = (input, trans, output) -> {
-        final int inputSize = input.length;
-        final int outputSize = output.length;
-
-        for (int idxO = 0; idxO < outputSize; idxO++) {
-            double sum = 0;
-            for (int idxI = 0; idxI < inputSize; idxI++) {
-                sum += input[idxI] * trans[idxO * idxI];
-            }
-            output[idxO] = sum;
-        }
+    /**
+     * An empty update function.
+     */
+    static final LayerAdjust.Updater Noop = (input, layer, error, learningRate) -> {
     };
-
-    /** An empty update function. */
-    static final LayerAdjust.Updater Noop = (input, layer, error, learningRate) -> {};
 
     static final LayerAdjust.Updater DenseUpdate = (inputs, layer, errors, learningRate) -> {
         final int inputSize = layer.getInputSize();
         final int outputSize = layer.getOutputSize();
         final double[] weights = layer.data;
 
-        for (int i = 0; i < inputSize; i++) {
-            for (int j = 0; j < outputSize; j++) {
-                weights[i * j] -= learningRate * errors[j] * inputs[i];
+        IntStream.range(0, inputSize).parallel().forEach(idxI -> {
+            for (int idxO = 0; idxO < outputSize; idxO++) {
+                weights[(idxI * outputSize) + idxO] -= learningRate * errors[idxO] * inputs[idxI];
             }
-        }
+        });
     };
     //================================================================
 
@@ -50,15 +41,22 @@ public final class AdjustFunctions {
     //================================================================
     static final NRandom random = new NRandom(System.nanoTime());
 
-
     // According to the source code, it has been used as initializer
     public static Layer fillWithGaussianRandom(final Layer layer) {
         final double[] input = layer.data;
-        final int inputSize = input.length;
-        for (int i = 0; i < inputSize; i++)
-            input[i] = random.nextGaussian(0, 1.0 / Math.sqrt(inputSize));
-
+        fillWithGaussianRandom(input);
         return layer;
+    }
+
+    /**
+     * Fill an array with GaussianRandom
+     */
+    public static double[] fillWithGaussianRandom(final double[] array) {
+        final int inputSize = array.length;
+        for (int i = 0; i < inputSize; i++) {
+            array[i] = random.nextGaussian(0, 1.0 / Math.sqrt(inputSize));
+        }
+        return array;
     }
 
     public static double[] fillWithZero(final double[] data) {
@@ -73,11 +71,18 @@ public final class AdjustFunctions {
         final int inputSize = layer.getInputSize();
         final int outputSize = layer.getOutputSize();
         final double[] data = layer.data;
+        fillWithRandom(inputSize, outputSize, data, rv);
+        return layer;
+    }
+
+    public static double[] fillWithRandom(final int inputSize, final int outputSize, final double[] array, final double rv) {
+        if (inputSize * outputSize != array.length) throw new IllegalArgumentException("input * output != array.size");
+
         for (int i = 0; i < inputSize; i++) {
             for (int j = 0; j < outputSize; j++) {
-                data[i * j] = random.nextGaussian(1 - rv, 1 + rv);
+                array[i * j] = random.nextGaussian(1 - rv, 1 + rv);
             }
         }
-        return layer;
+        return array;
     }
 }

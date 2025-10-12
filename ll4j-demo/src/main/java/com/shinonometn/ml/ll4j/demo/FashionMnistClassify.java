@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-public class MinRtTest {
+public class FashionMnistClassify {
 
     private final static String ModelPath = "test2.model";
     private final static String LabeledDataPath = "fashion-mnist_test.csv";

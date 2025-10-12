@@ -11,6 +11,8 @@ public final class DataSet {
     private DataSet() {
     }
 
+    //================================================================
+
     public abstract static class Entry {
         public final double[] values;
 
@@ -23,7 +25,11 @@ public final class DataSet {
         abstract public void toValues(double[] input);
     }
 
+    //================================================================
+
+    /** Entry with a single label */
     public final static class LabelEntry extends Entry {
+
         public final int label;
 
         LabelEntry(final int label, final double[] values) {
@@ -74,6 +80,8 @@ public final class DataSet {
             };
         }
     }
+
+    //================================================================
 
     public interface SampleIterator<T> extends Iterator<T>, Closeable {
     }

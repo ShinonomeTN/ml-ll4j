@@ -9,8 +9,6 @@ import huzpsb.ll4j.layer.LeakyRelu;
 import huzpsb.ll4j.model.Model;
 
 import java.nio.file.Paths;
-import java.time.Duration;
-import java.time.chrono.Chronology;
 
 public class TestTrain {
     private final static String ModelPath = "test3.model";
@@ -23,12 +21,12 @@ public class TestTrain {
         DataSet trainingSet = CsvLoader.load(LabeledDataPath, 0);
 
         Model model = new Model(
-                new DenseLayer(784, 100)
-                , new LeakyRelu(100)
-                , new DenseLayer(100, 100)
-                , new LeakyRelu(100)
-                , new DenseLayer(100, 10)
-                , new JudgeLayer(10) // MSELoss
+                new DenseLayer(784, 100),
+                new LeakyRelu(100),
+                new DenseLayer(100, 100),
+                new LeakyRelu(100),
+                new DenseLayer(100, 10),
+                new JudgeLayer(10) // MSELoss
         );
 
         final long start = System.currentTimeMillis();

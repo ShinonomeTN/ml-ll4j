@@ -4,6 +4,8 @@ public final class Layers {
     private Layers() {
     }
 
+    //================================================================
+
     final static String TYPE_DENSE = "D";
 
     public static Layer dense(final int input, final int output) {
@@ -24,14 +26,24 @@ public final class Layers {
     }
 
     public static Layer dense(final int input, final int output, final ForwardFunction function) {
-        return new Layer(TYPE_DENSE, new int[]{input, output}, new double[input * output], function);
+        return dense(input, output, new double[input * output], function);
     }
+
+    //================================================================
 
     final static String TYPE_JUDGE = "J";
 
+    /** Same as maxIndex */
     public static Layer judge(final int size) {
         return new Layer(TYPE_JUDGE, new int[]{size, 1}, new double[0], ForwardFunction.Judge);
     }
+
+    /** Select the max value's index as output */
+    public static Layer maxIndex(final int size) {
+        return new Layer(TYPE_JUDGE, new int[]{size, 1}, new double[0], ForwardFunction.MaxIndex);
+    }
+
+    //================================================================
 
     final static String TYPE_LEAKY_RELU = "L";
 

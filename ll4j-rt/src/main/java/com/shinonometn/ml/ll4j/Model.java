@@ -103,12 +103,16 @@ public class Model {
                 "Wrong input size for this model, expected %d, got %d", inputSize, input.length
         ));
 
-        double[] ref = input;
+        double[] iter = input;
         for (Layer layer : layers) {
             final double[] next = new double[layer.getOutputSize()];
-            layer.function.apply(ref, layer.data, next);
-            ref = next;
+            layer.function.apply(
+                    /* input   = */ iter,
+                    /* weights = */ layer.data,
+                    /*  output = */ next
+            );
+            iter = next;
         }
-        return ref;
+        return iter;
     }
 }

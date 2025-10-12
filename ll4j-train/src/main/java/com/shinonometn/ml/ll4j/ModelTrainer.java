@@ -5,7 +5,6 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Objects;
 
 import static com.shinonometn.ml.ll4j.Layers.*;
 
@@ -13,7 +12,7 @@ public class ModelTrainer {
     final LayerAdjust[] adjusters;
     final Model model;
 
-    private final HashMap<Object, double[]> resultCache = new HashMap<>();
+    private final HashMap<Object, double[]> outputCache = new HashMap<>();
     private final HashMap<Object, double[]> errorCache = new HashMap<>();
 
 
@@ -23,8 +22,9 @@ public class ModelTrainer {
      * get model input array cache, it's not null
      */
     private double[] getInput() {
-        return resultCache.get(InputKey);
+        return outputCache.get(InputKey);
     }
+
 
     private final Object AnswerKey;
 
@@ -32,12 +32,10 @@ public class ModelTrainer {
      * get model output array cache, it's not null
      */
     private double[] getAnswer() {
-        return resultCache.get(AnswerKey);
+        return outputCache.get(AnswerKey);
     }
 
     ModelTrainer(LayerAdjust[] adjusters, Model model) {
-        if (!Objects.equals(adjusters[adjusters.length - 1].layer.type, Layers.TYPE_JUDGE))
-            throw new IllegalArgumentException("Output layer is not JudgeLayer");
 
         this.adjusters = adjusters;
         this.model = model;
@@ -45,12 +43,12 @@ public class ModelTrainer {
         // Create input
         final double[] input = new double[model.getInputSize()];
         this.InputKey = input;
-        resultCache.put(InputKey, input);
+        outputCache.put(InputKey, input);
 
-        // Create output
+        // Create answer
         final double[] output = new double[model.getOutputSize()];
         this.AnswerKey = output;
-        resultCache.put(AnswerKey, output);
+        outputCache.put(AnswerKey, output);
     }
 
     void setLabeledData(final DataSet.Entry dataEntry) {
@@ -113,17 +111,17 @@ public class ModelTrainer {
         /**
          * The reference to this step's result cache
          */
-        abstract double[] getOutput();
+        abstract double[] getValues();
 
-        protected ModelTrainer trainer;
+        protected ModelTrainer ctx;
 
         /**
          * A network tweaking step.
          * <p>
          * It's a handy reference to each element in network training.
          */
-        protected Step(final ModelTrainer trainer) {
-            this.trainer = trainer;
+        protected Step(final ModelTrainer ctx) {
+            this.ctx = ctx;
         }
 
         /**
@@ -135,8 +133,8 @@ public class ModelTrainer {
             }
 
             @Override
-            double[] getOutput() {
-                return trainer.getInput();
+            double[] getValues() {
+                return ctx.getInput();
             }
         }
 
@@ -154,17 +152,19 @@ public class ModelTrainer {
              * Related to the current layer, it's the input error.
              */
             double[] getErrors() {
-                return trainer.errorCache.computeIfAbsent(
+                return ctx.errorCache.computeIfAbsent(
                         /*     key = */ tweaker,
-                        /* factory = */k -> AdjustFunctions.fillWithZero(new double[tweaker.layer.getInputSize()])
+                        /* factory = */k -> AdjustFunctions
+                                .fillWithZero(new double[tweaker.layer.getInputSize()])
                 );
             }
 
             @Override
-            double[] getOutput() {
-                return trainer.resultCache.computeIfAbsent(
+            double[] getValues() {
+                return ctx.outputCache.computeIfAbsent(
                         /*     key = */ tweaker,
-                        /* factory = */ k -> new double[tweaker.layer.getOutputSize()]
+                        /* factory = */ k -> AdjustFunctions
+                                .fillWithZero(new double[tweaker.layer.getOutputSize()])
                 );
             }
 
@@ -176,7 +176,7 @@ public class ModelTrainer {
         }
     }
 
-    public void adjust(final DataSet.LabelEntry entry) {
+    public void adjust(final DataSet.Entry entry) {
         adjust(entry, DefaultLearningRate);
     }
 
@@ -186,7 +186,7 @@ public class ModelTrainer {
      * @param entry        A data entry, with the sample data and a correct label
      * @param learningRate learning rate of this network
      */
-    public void adjust(final DataSet.LabelEntry entry, double learningRate) {
+    public void adjust(final DataSet.Entry entry, double learningRate) {
         // Check the learning rate
         if (Double.isNaN(learningRate) || learningRate <= 0.0) {
             learningRate = DefaultLearningRate;
@@ -212,21 +212,24 @@ public class ModelTrainer {
          * network updating.
          */
         for (final LayerAdjust adjuster : adjusters) {
-            final Step step = new Step.Adjust(this, adjuster);
-            final Layer layer = adjuster.layer;
-            final double[] input = steps.getFirst().getOutput();
-            final double[] output = step.getOutput();
-            layer.function.apply(
+            final Layer currentLayer = adjuster.layer;
+
+            final Step currentStep = new Step.Adjust(this, adjuster);
+            final double[] input = steps.getFirst().getValues();
+            final double[] output = currentStep.getValues();
+
+            currentLayer.function.apply(
                     /* Outputs of the latest layer  */ input,
-                    /* Weights of the current layer */ layer.data,
+                    /* Weights of the current layer */ currentLayer.data,
                     /* Destination of the outputs   */ output
             );
-            steps.push(step);
+
+            steps.push(currentStep);
         }
 
         // log the correct count
-        final Step output = steps.getFirst();
-        final double[] outputResults = output.getOutput();
+        final Step outputStep = steps.getFirst();
+        final double[] outputResults = outputStep.getValues();
         final double[] expectedResults = getAnswer();
         final boolean isCorrect = Arrays.equals(expectedResults, outputResults);
         if (isCorrect) correctCount++;
@@ -243,40 +246,42 @@ public class ModelTrainer {
          * (though some step needs a different algorithm). Use the benefit of stack, to
          * do calculation and update together.
          */
-        double[] outputErrors = expectedResults;
+        double[] upperError = expectedResults;
         Step i = steps.pop();
-        while (!steps.isEmpty() && (i instanceof Step.Adjust)) {
+        while ((i instanceof Step.Adjust) && !steps.isEmpty()) {
             final Step.Adjust currentStep = (Step.Adjust) i;
             final Layer currentlayer = currentStep.tweaker.layer;
-            final double[] inputErrors = currentStep.getErrors();
+            final double[] lowerError = currentStep.getErrors();
 
             final Step nextStep = steps.getFirst();
-            final double[] input = nextStep.getOutput();
+            final double[] input = nextStep.getValues();
 
             currentStep.tweaker.function.apply(
                     /*     input = */ input,
                     /*     layer = */ currentlayer,
-                    /*    errors = */ outputErrors,
-                    /*    output = */ inputErrors
+                    /*    errors = */ upperError,
+                    /*    output = */ lowerError
             );
 
             currentStep.tweaker.updater.apply(
                     /*        input = */ input,
                     /*        layer = */ currentlayer,
-                    /*       errors = */ outputErrors,
+                    /*       errors = */ upperError,
                     /* learningRate = */ learningRate
             );
 
             // Current layer's input error is the previous layer's output error
-            outputErrors = inputErrors;
+            upperError = lowerError;
             i = steps.pop();
         }
     }
     //================================================================
 
-    /** Save the model to file */
+    /**
+     * Save the model to file
+     */
     public void writeModelToFile(String path) throws IOException {
-        try(final PrintWriter writer = new PrintWriter(path)) {
+        try (final PrintWriter writer = new PrintWriter(path)) {
             for (final LayerAdjust adjuster : adjusters) {
                 final Layer layer = adjuster.layer;
                 switch (layer.type) {
