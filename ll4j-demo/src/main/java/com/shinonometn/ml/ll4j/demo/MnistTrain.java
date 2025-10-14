@@ -28,6 +28,12 @@ public class MnistTrain {
             .ofNullable(System.getenv("TRAIN_DATA_PATH"))
             .orElse("fashion-mnist_train.csv");
 
+    // 8e-7 for fashion, 8e-5 for digits
+    private final static double InitialLearningRate = Optional
+            .ofNullable(System.getenv("LEARNING_RATE"))
+            .map(Double::parseDouble)
+            .orElse(ModelTrainer.DefaultLearningRate);
+
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static final Thread.UncaughtExceptionHandler uceHandler = (t, e) -> executor.execute(() -> {
         e.printStackTrace(System.err);
@@ -62,50 +68,49 @@ public class MnistTrain {
         }
 
         final long start = System.currentTimeMillis();
-        double learnRate = 8e-4;
+
+        double learningRate = InitialLearningRate;
+
         for (int i = 0; i < 128; i++) {
             final long roundStart = System.currentTimeMillis();
+            int trainCount = 0, correctCount = 0, wrongCount = 0;
             System.out.printf("======== Training round % 3d/128 ========\n", i + 1);
-
             try (final SampleIterator<LabelEntry> sampleDataSet =
                          LabelEntry.createCSVIterator(LabeledDataPath)) {
 
                 while (sampleDataSet.hasNext()) {
                     // Adjust for single sample
-                    trainer.adjust(sampleDataSet.next(), learnRate);
+                    final double correct = trainer.adjust(sampleDataSet.next(), learningRate);
+                    if (correct > 0) correctCount++;
+                    else wrongCount++;
 
-                    final int c = trainer.getIterationCount();
-                    if ((c % 1000) != 0) continue;
-                    executor.execute(() -> printProgressLine(c, trainer.getCorrectCount(), trainer.getWrongCount()));
+                    if (((trainCount++) % 1000) != 0) continue;
+
+                    final int c = trainCount;
+                    final int t = correctCount;
+                    final int f = wrongCount;
+                    executor.execute(() -> printProgressLine(c, t, f));
                 }
-            }
-            final double rate = (double) trainer.getCorrectCount() / trainer.getIterationCount();
-            if (rate > 0.95) {
-                learnRate = 8e-7;
-            } else if (rate > 0.9) {
-                learnRate = 8e-6;
-            }
 
-            printProgressLine(trainer.getIterationCount(), trainer.getCorrectCount(), trainer.getWrongCount());
+            }
+            final long roundEnd = System.currentTimeMillis();
+            printProgressLine(trainCount, correctCount, wrongCount);
             System.out.println();
 
-            final long roundEnd = System.currentTimeMillis();
+            // Adjust the learning rate according to correct rate
+            final double correctRate = (double) correctCount / trainCount;
+            if (correctRate > 0.95) {
+                learningRate = InitialLearningRate * 0.01;
+            } else if (correctRate > 0.9) {
+                learningRate = InitialLearningRate * 0.1;
+            }
 
-            final int finalRound = i;
-            final double finalLearnRate = learnRate;
-            executor.execute(() -> {
-                System.out.printf(
-                        "Round %03d finished, time: %s%n",
-                        finalRound + 1, Formats.millisDuration(roundEnd - roundStart)
-                );
-                try {
-                    trainer.writeModelToFile(ModelLocation);
-                    System.out.printf("Correct rate: %02.2f. Round saved, next LR: %f.%n", rate, finalLearnRate);
-                } catch (IOException e) {
-                    e.printStackTrace(System.err);
-                }
-            });
-            trainer.resetCounters();
+            System.out.printf(
+                    "Round %03d finished, time: %s%n",
+                    i + 1, Formats.millisDuration(roundEnd - roundStart)
+            );
+            trainer.writeModelToFile(ModelLocation);
+            System.out.printf("Correct rate: %02.2f. Round saved, next LR: %f.%n", correctRate, learningRate);
         }
 
         final long end = System.currentTimeMillis();

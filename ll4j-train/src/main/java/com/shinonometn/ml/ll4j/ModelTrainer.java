@@ -83,29 +83,6 @@ public class ModelTrainer {
     }
 
     //================================================================
-
-    private int correctCount = 0;
-
-    public int getCorrectCount() {
-        return correctCount;
-    }
-
-    private int wrongCount = 0;
-
-    public int getWrongCount() {
-        return wrongCount;
-    }
-
-    public int getIterationCount() {
-        return correctCount + wrongCount;
-    }
-
-    public void resetCounters() {
-        correctCount = 0;
-        wrongCount = 0;
-    }
-
-    //================================================================
     abstract static class Step {
 
         /**
@@ -186,7 +163,7 @@ public class ModelTrainer {
      * @param entry        A data entry, with the sample data and a correct label
      * @param learningRate learning rate of this network
      */
-    public void adjust(final DataSet.Entry entry, double learningRate) {
+    public double adjust(final DataSet.Entry entry, double learningRate) {
         // Check the learning rate
         if (Double.isNaN(learningRate) || learningRate <= 0.0) {
             learningRate = DefaultLearningRate;
@@ -232,8 +209,6 @@ public class ModelTrainer {
         final double[] outputResults = outputStep.getValues();
         final double[] expectedResults = getAnswer();
         final boolean isCorrect = Arrays.equals(expectedResults, outputResults);
-        if (isCorrect) correctCount++;
-        else wrongCount++;
 
         // Set the correct answer to the network
         // In back propagation, the answer becomes the input
@@ -274,6 +249,8 @@ public class ModelTrainer {
             upperError = lowerError;
             i = steps.pop();
         }
+
+        return isCorrect ? 1.0 : -1.0;
     }
     //================================================================
 

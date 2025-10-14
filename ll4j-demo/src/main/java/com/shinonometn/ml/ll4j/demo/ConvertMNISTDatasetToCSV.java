@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.IntStream;
 
 public class ConvertMNISTDatasetToCSV {
     /* MNIST Training Label Set */
@@ -13,7 +14,7 @@ public class ConvertMNISTDatasetToCSV {
     /* MNIST Training Image Data */
     private final static String IMAGE_PATH = "./digits/train-images-idx3-ubyte";
     /* CSV Output Path */
-    private final static String OUTPUT_PATH = "./digits/test-images.csv";
+    private final static String OUTPUT_PATH = "./digits/train-images.csv";
 
     public static void main(String[] args) throws Exception {
         System.out.println("Label Path  : " + LABEL_PATH);
@@ -28,7 +29,7 @@ public class ConvertMNISTDatasetToCSV {
         final int[] labels = new int[labelIterator.entryCount];
         int labelCount = 0;
         while(labelIterator.hasNext()) {
-            MNIST.Entry it = labelIterator.next();
+            final MNIST.Entry it = labelIterator.next();
             labels[labelCount++] = it.data[0];
         }
         labelIterator.close();
@@ -41,7 +42,7 @@ public class ConvertMNISTDatasetToCSV {
         /* Write CSV header */
         final PrintWriter writer = new PrintWriter(OUTPUT_PATH);
         writer.print("label");
-        for (int i = 0; i < imageIterator.getEntrySize(); i++) writer.print(",pixel" + i);
+        IntStream.range(0, imageIterator.getEntrySize()).forEach(i -> writer.print(",pixel" + i));
         writer.println();
         writer.flush();
         System.out.println("CSV header written.");
@@ -49,17 +50,18 @@ public class ConvertMNISTDatasetToCSV {
         /* Write images */
         int imageCount = 0;
         while(imageIterator.hasNext()) {
-            MNIST.Entry it = imageIterator.next();
+            final MNIST.Entry entry = imageIterator.next();
             final int label = labels[imageCount];
-            final int w = it.getDimensionSize(0);
-            final int h = it.getDimensionSize(1);
-            final byte[] data = it.data;
+            final int cols = entry.getDimensionSize(0);
+            final int rows = entry.getDimensionSize(1);
+            final byte[] data = entry.data;
+
             writer.print(label);
-            for (int x = 0; x < w; x++) {
-                for (int y = 0; y < h; y++) {
+            for (int x = 0; x < cols; x++) {
+                for (int y = 0; y < rows; y++) {
                     // normalize
-                    final double value = (double) (data[x * h + y] & 0xFF) / 255;
-                    writer.write("," + value);
+                    final double value = (double) (data[x * cols + y] & 0xFF) / 255;
+                    writer.print("," + value);
                 }
             }
             writer.println();

@@ -24,9 +24,7 @@ public final class MNIST {
 
         // Read the magic
         final int[] magic = new int[4];
-        for (int i = 0; i < magic.length; i++) {
-            magic[i] = inputStream.read();
-        }
+        for (int i = 0; i < magic.length; i++) magic[i] = inputStream.read();
 
         // Check the magic number
         final int magicSum = magic[0] + magic[1];
@@ -34,9 +32,7 @@ public final class MNIST {
 
         // Read dimension sizes
         final int[] sizes = new int[magic[3]];
-        for (int i = 0; i < sizes.length; i++) {
-            sizes[i] = nextInt(inputStream, 4);
-        }
+        for (int i = 0; i < sizes.length; i++) sizes[i] = nextInt(inputStream, 4);
 
         return new EntryIterator(getType(magic[2]), sizes, inputStream);
     }
@@ -86,7 +82,7 @@ public final class MNIST {
 
         /** Get the product of entry dimensions */
         public int getEntrySize() {
-            return Arrays.stream(dimensionSizes).reduce(1, (a, b) -> a * b);
+            return entrySize;
         }
 
         @Override
@@ -105,7 +101,7 @@ public final class MNIST {
         public Entry next() {
             try {
                 final byte[] data = new byte[entrySize];
-                final int read = in.read(data, 0, entrySize);
+                final int read = in.read(data);
                 if (read != entrySize) throw new EOFException("Unexpected end of source stream");
                 return new Entry(dimensionSizes, data);
             } catch (Exception e) {
