@@ -75,19 +75,48 @@ public final class DataSet {
 
             if (skipHeader) scanner.nextLine(); // Skip the csv header
 
-            return new SampleIterator<LabelEntry>() {
+            // Empty iterator
+            if (!scanner.hasNextLine()) return new SampleIterator<LabelEntry>() {
+                @Override
+                public void close() {}
+
                 @Override
                 public boolean hasNext() {
-                    return scanner.hasNextLine();
+                    return false;
                 }
 
                 @Override
                 public LabelEntry next() {
-                    final String[] line = scanner.nextLine().split(",");
-                    final double[] buffer = new double[line.length - 1];
-                    for (int i = 1; i < line.length; i++) buffer[i - 1] = Double.parseDouble(line[i]);
-                    final int label = Integer.parseInt(line[0]);
+                    return null;
+                }
+            };
+
+            return new SampleIterator<LabelEntry>() {
+                private LabelEntry entry = fetch();
+
+                private LabelEntry fetch() {
+                    if (!scanner.hasNextLine()) return null;
+
+                    final String line = scanner.nextLine().trim();
+                    if (line.isEmpty()) return null;
+
+                    final String[] v = line.split(",");
+                    final double[] buffer = new double[v.length - 1];
+                    for (int i = 1; i < v.length; i++) buffer[i - 1] = Double.parseDouble(v[i]);
+                    final int label = Integer.parseInt(v[0]);
                     return new LabelEntry(label, buffer);
+                }
+
+                @Override
+                public boolean hasNext() {
+                    return entry != null;
+                }
+
+                @Override
+                public LabelEntry next() {
+                    final LabelEntry result = entry;
+                    entry = fetch();
+                    return result;
                 }
 
                 @Override

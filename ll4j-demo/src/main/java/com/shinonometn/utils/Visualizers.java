@@ -9,6 +9,8 @@ public final class Visualizers {
     private Visualizers() {
     }
 
+    //================================================================
+
     public static void dumpSampleToGreyScaleImageFile(
             final SampleVisualizingParams samples,
             final Path destination

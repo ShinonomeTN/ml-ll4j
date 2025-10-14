@@ -98,7 +98,7 @@ public final class MNIST {
 
         @Override
         public boolean hasNext() {
-            return yieldCount <= entryCount;
+            return yieldCount < entryCount;
         }
 
         @Override
@@ -107,12 +107,12 @@ public final class MNIST {
                 final byte[] data = new byte[entrySize];
                 final int read = in.read(data, 0, entrySize);
                 if (read != entrySize) throw new EOFException("Unexpected end of source stream");
-                final Entry entry = new Entry(dimensionSizes, data);
-                yieldCount++;
-                return entry;
+                return new Entry(dimensionSizes, data);
             } catch (Exception e) {
                 /* Throw all unexpected exceptions. */
                 throw new RuntimeException(e);
+            } finally {
+                yieldCount++;
             }
         }
     }

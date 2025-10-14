@@ -6,7 +6,7 @@ public final class Layers {
 
     //================================================================
 
-    final static String TYPE_DENSE = "D";
+    public final static String TYPE_DENSE = "D";
 
     public static Layer dense(final int input, final int output) {
         final double[] data = new double[input * output];
@@ -31,7 +31,7 @@ public final class Layers {
 
     //================================================================
 
-    final static String TYPE_JUDGE = "J";
+    public final static String TYPE_JUDGE = "J";
 
     /** Same as maxIndex */
     public static Layer judge(final int size) {
@@ -45,7 +45,7 @@ public final class Layers {
 
     //================================================================
 
-    final static String TYPE_LEAKY_RELU = "L";
+    public final static String TYPE_LEAKY_RELU = "L";
 
     public static Layer leakyRelu(final int size) {
         return new Layer(TYPE_LEAKY_RELU, new int[]{size, size}, new double[0], ForwardFunction.LeakyRelu);

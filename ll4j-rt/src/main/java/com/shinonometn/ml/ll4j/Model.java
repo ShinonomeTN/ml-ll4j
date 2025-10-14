@@ -1,6 +1,9 @@
 package com.shinonometn.ml.ll4j;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Model is a cache for each classification job
@@ -24,6 +27,11 @@ public class Model {
      */
     public int getOutputSize() {
         return layers[layers.length - 1].getOutputSize();
+    }
+
+    /** Get layers */
+    public List<Layer> getLayers() {
+        return Collections.unmodifiableList(Arrays.asList(layers));
     }
 
     //================================================================

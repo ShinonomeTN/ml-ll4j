@@ -16,11 +16,15 @@ public class Layer {
         this.function = function;
     }
 
-    int getInputSize() {
+    public int getInputSize() {
         return meta[0];
     }
 
-    int getOutputSize() {
+    public int getOutputSize() {
         return meta[1];
+    }
+
+    public double[] getData() {
+        return data;
     }
 }
