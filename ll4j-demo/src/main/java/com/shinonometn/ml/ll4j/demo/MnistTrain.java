@@ -11,6 +11,7 @@ import com.shinonometn.utils.Loaders;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -19,18 +20,23 @@ import static com.shinonometn.ml.ll4j.Layers.*;
 
 public class MnistTrain {
 
-//    private final static String LabeledDataPath = "fashion-mnist_train.csv";
-//    private final static String ModelLocation = "./test2.model";
+    private final static String ModelLocation = Optional
+            .ofNullable(System.getenv("MODEL_LOCATION"))
+            .orElse("test2.model");
 
-    // Handwritten digit model
-     private final static String ModelLocation = "./digits/test.model";
-     private final static String LabeledDataPath = "./digits/train-images.csv";
+    private final static String LabeledDataPath = Optional
+            .ofNullable(System.getenv("TRAIN_DATA_PATH"))
+            .orElse("fashion-mnist_train.csv");
 
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static final Thread.UncaughtExceptionHandler uceHandler = (t, e) -> executor.execute(() -> {
         e.printStackTrace(System.err);
         executor.shutdown();
     });
+
+    private static void printProgressLine(final int c, final int t, final int f) {
+        System.out.printf("\r[% 6d] t:% 6d, f:% 6d, r:%2.2f%%", c, t, f, ((t / (double) c) * 100));
+    }
 
     public static void main(String[] args) throws IOException, MinRtException {
         Thread.currentThread().setUncaughtExceptionHandler(uceHandler);
@@ -56,41 +62,45 @@ public class MnistTrain {
         }
 
         final long start = System.currentTimeMillis();
+        double learnRate = 8e-4;
         for (int i = 0; i < 128; i++) {
             final long roundStart = System.currentTimeMillis();
-            System.out.printf("Training round % 3d/128 ========\n", i + 1);
+            System.out.printf("======== Training round % 3d/128 ========\n", i + 1);
 
             try (final SampleIterator<LabelEntry> sampleDataSet =
                          LabelEntry.createCSVIterator(LabeledDataPath)) {
 
                 while (sampleDataSet.hasNext()) {
-                    trainer.adjust(sampleDataSet.next());
+                    // Adjust for single sample
+                    trainer.adjust(sampleDataSet.next(), learnRate);
 
                     final int c = trainer.getIterationCount();
                     if ((c % 1000) != 0) continue;
-
-                    final int t = trainer.getCorrectCount();
-                    final int f = trainer.getWrongCount();
-                    executor.execute(() -> System.out.printf(
-                            "\r[% 6d] t:% 6d, f:% 6d, r:%2.2f%%",
-                            c, t, f, ((t / (double) c) * 100)
-                    ));
+                    executor.execute(() -> printProgressLine(c, trainer.getCorrectCount(), trainer.getWrongCount()));
                 }
             }
+            final double rate = (double) trainer.getCorrectCount() / trainer.getIterationCount();
+            if (rate > 0.95) {
+                learnRate = 8e-7;
+            } else if (rate > 0.9) {
+                learnRate = 8e-6;
+            }
 
+            printProgressLine(trainer.getIterationCount(), trainer.getCorrectCount(), trainer.getWrongCount());
             System.out.println();
 
             final long roundEnd = System.currentTimeMillis();
-            final int round = i;
 
+            final int finalRound = i;
+            final double finalLearnRate = learnRate;
             executor.execute(() -> {
                 System.out.printf(
                         "Round %03d finished, time: %s%n",
-                        round + 1, Formats.millisDuration(roundEnd - roundStart)
+                        finalRound + 1, Formats.millisDuration(roundEnd - roundStart)
                 );
                 try {
                     trainer.writeModelToFile(ModelLocation);
-                    System.out.println("Round saved.");
+                    System.out.printf("Correct rate: %02.2f. Round saved, next LR: %f.%n", rate, finalLearnRate);
                 } catch (IOException e) {
                     e.printStackTrace(System.err);
                 }

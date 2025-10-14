@@ -7,17 +7,20 @@ import com.shinonometn.utils.SampleVisualizingParams;
 import com.shinonometn.utils.Visualizers;
 
 import java.nio.file.Paths;
+import java.util.Optional;
 
 public class MnistClassify {
 
     // The origin FashionMNIST model
     // private final static String ModelPath = "../ll4j-huzpsb/src/main/resources/test.model";
-    private final static String ModelPath = "test2.model"; // Model output path
-    private final static String LabeledDataPath = "fashion-mnist_test.csv";
 
-    // Handwritten digit model
-    // private final static String ModelPath = "./digits/test.model";
-    // private final static String LabeledDataPath = "./digits/test-images.csv";
+    private final static String ModelPath = Optional
+            .ofNullable(System.getenv("MODEL_LOCATION"))
+            .orElse("test2.model");
+
+    private final static String LabeledDataPath = Optional
+            .ofNullable(System.getenv("TEST_DATA_PATH"))
+            .orElse("fashion-mnist_test.csv");
 
     public static void main(String[] args) throws Exception {
         System.out.printf("Model path : %s\n", Paths.get(ModelPath).toAbsolutePath());
@@ -35,8 +38,8 @@ public class MnistClassify {
         while (sampleDataSet.hasNext()) {
             final DataSet.LabelEntry data = sampleDataSet.next();
             if (count == 0) Visualizers.dumpSampleToGreyScaleImageFile(
-                    SampleVisualizingParams.rowFirst(28,28, data.values),
-                    Paths.get("./IMG_" + (int) data.values[0] + ".png")
+                    SampleVisualizingParams.rowFirst(28, 28, data.values),
+                    Paths.get("./IMG_" + data.getLabelValue() + ".png")
             );
 
             final int predictedLabel = (int) model.classification(data.values)[0];

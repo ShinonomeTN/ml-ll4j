@@ -27,7 +27,8 @@ public class ConvertMNISTDatasetToCSV {
         final MNIST.EntryIterator labelIterator = createDataSetIterator(Paths.get(LABEL_PATH));
         final int[] labels = new int[labelIterator.entryCount];
         int labelIndex = 0;
-        for (MNIST.Entry it = labelIterator.next(); labelIterator.hasNext(); it = labelIterator.next()) {
+        while(labelIterator.hasNext()) {
+            MNIST.Entry it = labelIterator.next();
             labels[labelIndex++] = it.data[0];
         }
         labelIterator.close();
@@ -47,7 +48,8 @@ public class ConvertMNISTDatasetToCSV {
 
         /* Write images */
         int imageIndex = 0;
-        for (MNIST.Entry it = imageIterator.next(); imageIterator.hasNext(); it = imageIterator.next()) {
+        while(imageIterator.hasNext()) {
+            MNIST.Entry it = imageIterator.next();
             final int label = labels[imageIndex];
             final int w = it.getDimensionSize(0);
             final int h = it.getDimensionSize(1);
