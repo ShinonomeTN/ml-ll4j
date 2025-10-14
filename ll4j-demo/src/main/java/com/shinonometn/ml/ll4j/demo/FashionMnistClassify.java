@@ -3,16 +3,14 @@ package com.shinonometn.ml.ll4j.demo;
 import com.shinonometn.ml.ll4j.DataSet;
 import com.shinonometn.ml.ll4j.Model;
 import com.shinonometn.utils.Loaders;
+import com.shinonometn.utils.SampleVisualizingParams;
+import com.shinonometn.utils.Visualizers;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
 
 public class FashionMnistClassify {
 
@@ -47,7 +45,10 @@ public class FashionMnistClassify {
         int count = 0;
         while (sampleDataSet.hasNext()) {
             final DataSet.LabelEntry data = sampleDataSet.next();
-            if (count == 0) dumpAsImage(data.values);
+            if (count == 0) Visualizers.dumpSampleToGreyScaleImageFile(
+                    SampleVisualizingParams.rowFirst(28,28, data.values),
+                    Paths.get("./test.png")
+            );
 
             final int predictedLabel = (int) model.classification(data.values)[0];
 
