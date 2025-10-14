@@ -13,16 +13,30 @@ public final class DataSet {
 
     //================================================================
 
+    /** A DataSet entry contains the value, and a label */
     public abstract static class Entry {
         public final double[] values;
 
-        abstract public int getLabelLength();
+        /** Get the label value array */
+        abstract public double[] getLabel();
+
+        public int getLabelSize() {
+            return getLabel().length;
+        }
 
         protected Entry(final double[] values) {
             this.values = values;
         }
 
-        abstract public void toValues(double[] input);
+        /** Set value data to an array */
+        public void setValueTo(double[] dest) {
+            System.arraycopy(getLabel(), 0, dest, 0, dest.length);
+        }
+    }
+
+    //================================================================
+
+    public interface SampleIterator<T> extends Iterator<T>, Closeable {
     }
 
     //================================================================
@@ -30,27 +44,30 @@ public final class DataSet {
     /** Entry with a single label */
     public final static class LabelEntry extends Entry {
 
-        public final int label;
+        private final double[] label;
+
+        public double[] getLabel() {
+            return label;
+        }
+
+        public int getLabelValue() {
+            return (int) label[0];
+        }
 
         LabelEntry(final int label, final double[] values) {
             super(values);
-            this.label = label;
+            this.label = new double[] { label };
         }
 
         @Override
-        public int getLabelLength() {
-            return 1;
-        }
-
-        @Override
-        public void toValues(final double[] input) {
-            input[0] = label;
+        public int getLabelSize() {
+            return label.length;
         }
 
         //================================================================
 
         public static SampleIterator<LabelEntry> createCSVIterator(String path) throws IOException {
-            return createCSVIterator(path, false);
+            return createCSVIterator(path, true);
         }
 
         public static SampleIterator<LabelEntry> createCSVIterator(String path, boolean skipHeader) throws IOException {
@@ -79,10 +96,5 @@ public final class DataSet {
                 }
             };
         }
-    }
-
-    //================================================================
-
-    public interface SampleIterator<T> extends Iterator<T>, Closeable {
     }
 }

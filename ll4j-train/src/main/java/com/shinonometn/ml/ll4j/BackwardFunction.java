@@ -26,25 +26,45 @@ public interface BackwardFunction {
         }
     };
 
-    BackwardFunction Dense = (input, layer, errors, output) -> {
-        final double[] weights = layer.data;
-        final int inputSize = layer.getInputSize();
-        final int outputSize = layer.getOutputSize();
+    BackwardFunction Dense = new BackwardFunction() {
+        @Override
+        public void apply(double[] input, Layer layer, double[] errors, double[] output) {
+            final int inputSize = layer.getInputSize();
 
-        IntStream.range(0, inputSize).forEach(idxI -> {
+            IntStream.range(0, inputSize).forEach(idxI -> forEachInput(
+                    /*        Input index  */ idxI,
+                    /* Layer size and data */ layer.getInputSize(), layer.getOutputSize(), layer.data,
+                    /*   Lower layer error */ errors,
+                    /*        Error output */ output
+            ));
+        }
+
+        private void forEachInput(
+                final int idxI,
+                final int iSize, final int oSize, final double[] weights,
+                final double[] errors,
+                final double[] output
+        ) {
             double err = 0;
-            for (int idxO = 0; idxO < outputSize; idxO++) {
-                err += errors[idxO] * weights[(idxO * inputSize) + idxI];
+            for (int idxO = 0; idxO < oSize; idxO++) {
+                err += errors[idxO] * weights[(idxO * iSize) + idxI];
             }
             output[idxI] = err;
-        });
+        }
     };
 
     BackwardFunction LeakyRelu = (input, layer, errors, output) -> {
         final int outputSize = layer.getOutputSize();
         for (int i = 0; i < outputSize; i++) {
             final double v = input[i];
-            output[i] = v > 0 ? errors[i] : (v < 0 ? errors[i] * 0.01 : Double.MIN_NORMAL);
+            if (v > 0) {
+                output[i] = errors[i];
+            } else if (v < 0) {
+                output[i] = errors[i] * 0.01;
+            } else {
+                // if it is exactly zero, just let it be a very small value
+                output[i] = Double.MIN_NORMAL;
+            }
         }
     };
 }

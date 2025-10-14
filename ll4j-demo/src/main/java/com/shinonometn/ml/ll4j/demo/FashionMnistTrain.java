@@ -55,11 +55,11 @@ public class FashionMnistTrain {
             final long roundStart = System.currentTimeMillis();
             System.out.printf("Training round % 3d/128 ========\n", i + 1);
 
-            try(final SampleIterator<LabelEntry> sampleDataSet =
-                        LabelEntry.createCSVIterator(LabeledDataPath, true)) {
+            try (final SampleIterator<LabelEntry> sampleDataSet =
+                         LabelEntry.createCSVIterator(LabeledDataPath)) {
 
-                while(sampleDataSet.hasNext()) {
-                    trainer.adjust(sampleDataSet.next(), 8e-7);
+                while (sampleDataSet.hasNext()) {
+                    trainer.adjust(sampleDataSet.next());
 
                     final int c = trainer.getIterationCount();
                     if ((c % 1000) != 0) continue;

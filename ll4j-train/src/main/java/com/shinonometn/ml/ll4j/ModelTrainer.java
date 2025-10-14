@@ -60,7 +60,7 @@ public class ModelTrainer {
                 inputSize, modelInput.length
         ));
 
-        final int outputSize = dataEntry.getLabelLength();
+        final int outputSize = dataEntry.getLabelSize();
         final double[] answer = getAnswer();
         if (outputSize != answer.length) throw new IllegalArgumentException(String.format(
                 "Label dimensions does not equals to the model output: %d, expected: %d",
@@ -71,7 +71,7 @@ public class ModelTrainer {
         System.arraycopy(input, 0, modelInput, 0, inputSize);
 
         // Set the answer
-        dataEntry.toValues(answer);
+        dataEntry.setValueTo(answer);
     }
 
     public Model toModel() {
@@ -155,7 +155,7 @@ public class ModelTrainer {
                 return ctx.errorCache.computeIfAbsent(
                         /*     key = */ tweaker,
                         /* factory = */k -> AdjustFunctions
-                                .fillWithZero(new double[tweaker.layer.getInputSize()])
+                                .fillWithZero(new double[tweaker.getInputSize()])
                 );
             }
 
@@ -164,7 +164,7 @@ public class ModelTrainer {
                 return ctx.outputCache.computeIfAbsent(
                         /*     key = */ tweaker,
                         /* factory = */ k -> AdjustFunctions
-                                .fillWithZero(new double[tweaker.layer.getOutputSize()])
+                                .fillWithZero(new double[tweaker.getOutputSize()])
                 );
             }
 

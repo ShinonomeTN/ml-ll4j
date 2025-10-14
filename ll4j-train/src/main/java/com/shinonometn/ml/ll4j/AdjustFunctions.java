@@ -16,17 +16,33 @@ public final class AdjustFunctions {
     static final LayerAdjust.Updater Noop = (input, layer, error, learningRate) -> {
     };
 
-    static final LayerAdjust.Updater DenseUpdate = (inputs, layer, errors, lr) -> {
-        final int inputSize = layer.getInputSize();
-        final int outputSize = layer.getOutputSize();
-        final double[] weights = layer.data;
+    static final LayerAdjust.Updater DenseUpdate = new LayerAdjust.Updater() {
 
-        IntStream.range(0, inputSize).parallel().forEach(idxI -> {
-            for (int idxO = 0; idxO < outputSize; idxO++) {
-                final double delta = lr * errors[idxO] * inputs[idxI];
-                weights[(idxI * outputSize) + idxO] -= delta;
+        @Override
+        public void apply(double[] inputs, Layer layer, double[] errors, double lr) {
+            final int inputSize = layer.getInputSize();
+
+            IntStream.range(0, inputSize).parallel().forEach(idxI -> forEachInput(
+                    /*       Connection Index */ idxI,
+                    /*        Layer size info */ layer.getOutputSize(),
+                    /*           Layer inputs */ inputs,
+                    /* Weights to be adjusted */ layer.data,
+                    /*                 Errors */ errors,
+                    /*          Learning rate */ lr
+            ));
+        }
+
+        private void forEachInput(
+                final int idxI,
+                final int oSize,
+                final double[] input, final double[] weights,
+                final double[] errors, final double lr
+        ) {
+            for (int idxO = 0; idxO < oSize; idxO++) {
+                final double delta = lr * errors[idxO] * input[idxI];
+                weights[(idxI * oSize) + idxO] -= delta;
             }
-        });
+        }
     };
     //================================================================
 

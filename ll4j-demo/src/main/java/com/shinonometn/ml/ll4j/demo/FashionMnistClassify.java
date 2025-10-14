@@ -39,7 +39,7 @@ public class FashionMnistClassify {
         final Model model = Model.parseLayers(Loaders.loadModelString(ModelPath));
 
         final DataSet.SampleIterator<DataSet.LabelEntry> sampleDataSet = DataSet
-                .LabelEntry.createCSVIterator(LabeledDataPath, true);
+                .LabelEntry.createCSVIterator(LabeledDataPath);
 
         int correct = 0, wrong = 0;
         System.out.println("Start testing...");
@@ -51,7 +51,7 @@ public class FashionMnistClassify {
 
             final int predictedLabel = (int) model.classification(data.values)[0];
 
-            final int actualLabel = data.label;
+            final int actualLabel = data.getLabelValue();
             final boolean isCorrect = (predictedLabel == actualLabel);
             if (isCorrect) correct++;
             else wrong++;
