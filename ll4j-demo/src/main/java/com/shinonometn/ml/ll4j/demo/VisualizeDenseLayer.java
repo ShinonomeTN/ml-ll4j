@@ -22,7 +22,9 @@ public class VisualizeDenseLayer {
     public static void main(String[] args) throws IOException, MinRtException {
         final Model model = Model.parseLayers(Loaders.loadModelString(MODEL_PATH));
         final Path outputFolder = Paths.get("./layer_visualized");
-        outputFolder.toFile().mkdirs();
+        if (outputFolder.toFile().mkdirs()) System.out.println(
+                "Created output folder: " + outputFolder.toAbsolutePath()
+        );
         dumpModelToGreyScaleImageFile(model, 0.5, outputFolder);
     }
 
