@@ -6,29 +6,18 @@ import com.shinonometn.utils.Loaders;
 import com.shinonometn.utils.SampleVisualizingParams;
 import com.shinonometn.utils.Visualizers;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.nio.file.Paths;
 
-public class FashionMnistClassify {
+public class MnistClassify {
 
-    // THe origin model
-//    private final static String ModelPath = "../ll4j-huzpsb/src/main/resources/test.model";
-    private final static String ModelPath = "test2.model";
+    // The origin FashionMNIST model
+    // private final static String ModelPath = "../ll4j-huzpsb/src/main/resources/test.model";
+    private final static String ModelPath = "test2.model"; // Model output path
     private final static String LabeledDataPath = "fashion-mnist_test.csv";
 
-    static void dumpAsImage(double[] sampleData) throws IOException {
-        final BufferedImage img = new BufferedImage(28, 28, BufferedImage.TYPE_BYTE_GRAY);
-        for (int i = 0; i < 28 * 28; i++) {
-            int x = i % 28;
-            int y = i / 28;
-            int rgb = (int) (sampleData[i] * 255);
-            img.setRGB(x, y, rgb << 16 | rgb << 8 | rgb);
-        }
-        ImageIO.write(img, "png", new File("test.png"));
-    }
+    // Handwritten digit model
+    // private final static String ModelPath = "./digits/test.model";
+    // private final static String LabeledDataPath = "./digits/test-images.csv";
 
     public static void main(String[] args) throws Exception {
         System.out.printf("Model path : %s\n", Paths.get(ModelPath).toAbsolutePath());
@@ -47,7 +36,7 @@ public class FashionMnistClassify {
             final DataSet.LabelEntry data = sampleDataSet.next();
             if (count == 0) Visualizers.dumpSampleToGreyScaleImageFile(
                     SampleVisualizingParams.rowFirst(28,28, data.values),
-                    Paths.get("./test.png")
+                    Paths.get("./IMG_" + (int) data.values[0] + ".png")
             );
 
             final int predictedLabel = (int) model.classification(data.values)[0];

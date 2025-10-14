@@ -17,9 +17,14 @@ import java.util.concurrent.Executors;
 import static com.shinonometn.ml.ll4j.AdjustFunctions.fillWithGaussianRandom;
 import static com.shinonometn.ml.ll4j.Layers.*;
 
-public class FashionMnistTrain {
-    private final static String LabeledDataPath = "fashion-mnist_train.csv";
-    private final static String ModelLocation = "./test2.model";
+public class MnistTrain {
+
+//    private final static String LabeledDataPath = "fashion-mnist_train.csv";
+//    private final static String ModelLocation = "./test2.model";
+
+    // Handwritten digit model
+     private final static String ModelLocation = "./digits/test.model";
+     private final static String LabeledDataPath = "./digits/train-images.csv";
 
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static final Thread.UncaughtExceptionHandler uceHandler = (t, e) -> executor.execute(() -> {
