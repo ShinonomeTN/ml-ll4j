@@ -31,7 +31,7 @@ public interface BackwardFunction {
         public void apply(double[] input, Layer layer, double[] errors, double[] output) {
             final int inputSize = layer.getInputSize();
 
-            IntStream.range(0, inputSize).forEach(idxI -> forEachInput(
+            IntStream.range(0, inputSize).parallel().forEach(idxI -> forEachInput(
                     /*        Input index  */ idxI,
                     /* Layer size and data */ layer.getInputSize(), layer.getOutputSize(), layer.data,
                     /*   Lower layer error */ errors,
